@@ -1,37 +1,60 @@
-# ⚡ پاورکدز — اسکنر IP و دامنه
+# ⚡ Powercodes — IP & Domain Scanner
 
-ابزار حرفه‌ای اسکن IP و CDN با بررسی Ping + TCP
+## 🔎 Advanced CDN IP Scanner & TCP Checker
 
 ---
 
-## 🚀 درباره پروژه
+<div align="center">
 
-این ابزار برای شناسایی IP های قابل استفاده پشت CDN طراحی شده است.
+![Python](https://img.shields.io/badge/Python-3.9+-blue?style=for-the-badge&logo=python)
+![Version](https://img.shields.io/badge/Version-1.0-green?style=for-the-badge)
+![Platform](https://img.shields.io/badge/Windows%20%7C%20Termux-orange?style=for-the-badge)
+![CDN](https://img.shields.io/badge/CDN-Supported-red?style=for-the-badge)
 
-⚠️ نکته مهم:
-فقط پینگ معیار خوبی نیست، چون بسیاری از IP ها پینگ می‌دهند اما اتصال TCP واقعی ندارند یا پشت فیلترینگ هستند.
+<br>
+
+⚡ اسکن حرفه‌ای IP و دامنه با تشخیص CDN  
+⚡ Ping + TCP Validation  
+⚡ مناسب تست آیپی‌های قابل استفاده  
+⚡ خروجی تمیز و حرفه‌ای  
+
+<br>
+
+🌐 Telegram: https://t.me/powercodes  
+📺 YouTube: https://youtube.com/@powercodes  
+💻 GitHub: https://github.com/power_codes  
+
+</div>
+
+---
+
+# 🇮🇷 معرفی پروژه
+
+⚠️ فقط پینگ گرفتن ملاک نیست!
+
+در شبکه‌های دارای فیلترینگ، ممکن است یک IP پینگ بدهد اما TCP واقعی نداشته باشد.
 
 این ابزار بررسی می‌کند:
 - Ping
 - TCP Connection
-- تشخیص CDN
+- CDN Detection
 
 ---
 
-## ✨ قابلیت‌ها
+# ✨ قابلیت‌ها
 
-- اسکن سریع چند نخی (Multi Thread)
-- پشتیبانی IP / ساب‌نت / دامنه / ساب‌دامنه
-- تست TCP واقعی
-- تست Ping
-- تشخیص CDN
+- اسکن IP / Subnet / Domain / Subdomain
+- Multi Thread Scanner
+- TCP Validation
+- Ping Test
+- CDN Detection
 - حذف IP های تکراری
-- خروجی تمیز TXT
-- پشتیبانی از فایل targets.txt
+- خروجی TXT تمیز
+- پشتیبانی از targets.txt
 
 ---
 
-## ☁️ CDN های پشتیبانی شده
+# ☁️ CDN های پشتیبانی شده
 
 - Cloudflare
 - Fastly
@@ -44,43 +67,67 @@
 
 ---
 
-## 📦 نصب و راه‌اندازی
+# 📥 نصب و اجرا
 
-## 💻 دانلود پروژه
+## 💻 Windows
 
-دو روش دارید:
+### 1) نصب Python
+https://python.org
 
-### 1) با Git
+Add Python to PATH را فعال کنید.
+
+### 2) نصب Git
+https://git-scm.com
+
+### 3) Clone
 
 git clone https://github.com/power-codes/Scanner-IP-CDNs.git
 cd Scanner-IP-CDNs
 
----
-
-### 2) دانلود دستی
-
-- وارد GitHub شوید
-- روی Code بزنید
-- گزینه Download ZIP را انتخاب کنید
-- فایل را استخراج کنید
-
----
-
-## ⚙️ نصب وابستگی‌ها
+### 4) نصب وابستگی‌ها
 
 pip install -r requirements.txt
 
----
-
-## 🚀 اجرای ابزار
+### 5) اجرا
 
 python scanner.py
 
 ---
 
-## 📂 فایل targets (اختیاری)
+## 📱 Termux
 
-targets.txt را بسازید:
+pkg update -y && pkg upgrade -y
+pkg install python git -y
+
+git clone https://github.com/power-codes/Scanner-IP-CDNs.git
+cd Scanner-IP-CDNs
+
+pip install -r requirements.txt
+python scanner.py
+
+---
+
+## 📁 نصب دستی
+
+1. دانلود ZIP
+2. Extract
+3. اجرا:
+
+pip install -r requirements.txt
+python scanner.py
+
+---
+
+# 📦 Requirements
+
+flask
+requests
+
+---
+
+# 📂 Targets
+
+targets.txt:
 
 google.com
 cloudflare.com
@@ -90,7 +137,7 @@ sub.example.com
 
 ---
 
-## 📤 خروجی‌ها
+# 📤 خروجی‌ها
 
 - alive_ips.txt
 - clean_domains.txt
@@ -99,34 +146,24 @@ sub.example.com
 
 ---
 
-## 🧠 نحوه کار
+# 🧠 نحوه کار
 
-1. تبدیل دامنه به IP
-2. بررسی Ping
-3. تست TCP
-4. تشخیص CDN
-5. حذف موارد تکراری
-6. ذخیره خروجی تمیز
-
----
-
-## ⚠️ نکته مهم
-
-Ping به تنهایی کافی نیست.  
-این ابزار برای بررسی اتصال واقعی طراحی شده است.
+1. Resolve
+2. Ping
+3. TCP Check
+4. CDN Detect
+5. Clean duplicates
+6. Export
 
 ---
 
-## ⭐ حمایت
+# ⭐ Support
 
-اگر مفید بود:
-
-⭐ ستاره بده  
-🍴 فورک کن  
-📢 به دیگران معرفی کن  
+⭐ Star  
+🍴 Fork  
+📢 Share  
 
 ---
 
-## 👨‍💻 توسعه‌دهنده
-
-Powercodes
+# 👨‍💻 Powercodes
+Telegram: https://t.me/powercodes
