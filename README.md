@@ -1,152 +1,155 @@
-# ⚡ Powercodes — IP & Domain Scanner
-
-## 🔎 Advanced CDN IP Scanner & TCP Checker
-
----
+ 
+/**
+ * README.md PRO VERSION
+ * PROJECT: Scanner-IP-CDNs
+ * DEVELOPER: Powercodes
+ */
+?>
 
 <div align="center">
 
-![Python](https://img.shields.io/badge/Python-3.9+-blue?style=for-the-badge&logo=python)
-![Version](https://img.shields.io/badge/Version-1.0-green?style=for-the-badge)
-![Platform](https://img.shields.io/badge/Windows%20%7C%20Termux-orange?style=for-the-badge)
-![CDN](https://img.shields.io/badge/CDN-Supported-red?style=for-the-badge)
+# ⚡ Powercodes — Ultra Advanced IP & Domain Scanner
+### 🛡️ High-Performance TCP Port Validator & Smart CDN Classifier
+
+[![Python Version](https://img.shields.io/badge/Python-3.9+-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
+[![License](https://img.shields.io/badge/License-MIT-yellow?style=for-the-badge)](https://opensource.org/licenses/MIT)
+[![Platforms](https://img.shields.io/badge/Platforms-Windows%20%7C%20Linux%20%7C%20Termux-orange?style=for-the-badge&logo=linux&logoColor=white)](https://github.com/power-codes)
+[![CDN Support](https://img.shields.io/badge/CDNs-Multi--Provider-red?style=for-the-badge&logo=cloudflare&logoColor=white)](https://t.me/powercodes)
 
 <br>
 
-⚡ اسکن حرفه‌ای IP و دامنه با تشخیص CDN  
-⚡ Ping + TCP Validation  
-⚡ مناسب تست آیپی‌های قابل استفاده  
-⚡ خروجی تمیز و حرفه‌ای  
+**🚀 اسکنر برای تفکیک آی‌پی‌های سالم و وایت لیست شده ** 
 
-<br>
-
-🌐 Telegram: https://t.me/powercodes  
-📺 YouTube: https://youtube.com/@powercodes  
-💻 GitHub: https://github.com/power_codes  
+[🌐 کانال تلگرام](https://t.me/powercodes) • [📺 آموزش یوتیوب](https://youtube.com/@powercodes) • [💻 گیت‌هاب توسعه‌دهنده](https://github.com/power_codes)
 
 </div>
 
 ---
 
-# 🇮🇷 معرفی پروژه
+## 📖 معرفی پروژه (Overview)
 
-⚠️ فقط پینگ گرفتن ملاک نیست!
+در وضعیت کنونی شبکه، بسیاری از آی‌پی‌ها یا دامنه‌ها ممکن است به درخواست‌های معمولی `Ping (ICMP)` پاسخ دهند، اما هنگام برقراری ارتباط واقعی، پورت‌های آن‌ها کاملاً مسدود باشد. 
 
-در وضعیت فعلی اینترنت ، ممکن است یک IP پینگ بدهد اما TCP واقعی نداشته باشد.
-
-این ابزار بررسی می‌کند:
-- Ping
-- TCP Connection
-- CDN Detection
+**Scanner-IP-CDNs** یک ابزار حرفه‌ای و مبتنی بر پایتون است که با متدولوژی **لایه انتقال (Transport Layer)**، پورت‌های TCP را به صورت موازی (Multi-threaded) بررسی می‌کند. این ابزار به شما تضمین می‌دهد که خروجی نهایی، شامل آی‌پی‌های ۱۰۰٪ تمیز و قابل استفاده در انواع تونل‌ها و کانکشن‌ها است.
 
 ---
 
-# ✨ قابلیت‌ها
+## ✨ قابلیت‌های برجسته (Key Features)
 
-- اسکن IP / Subnet / Domain / Subdomain
-- مولتی ترد
-- تایید TCP
-- تست پینگ
-- تشخیص cdn ها
-- حذف IP های تکراری
-- حذف متن ها فاصله ها و...
-- دارای لیست ذخیره برای اسکن روزانه
+* **⚡ الگوهای اسکن همزمان (Multi-Threading):** اسکن هزاران رنج و دامنه در کمترین زمان بدون اتلاف وقت یا افت سرعت.
+* **🔍 تشخیص هوشمند CDN:** مجهز به دیتابیس داخلی رنج‌های شبکه توزیع محتوا برای دسته‌بندی و شناسایی خودکار نوع CDN.
+* **🧹 سیستم پاک‌سازی خودکار (Data Sanitize):** فیلتر کردن هوشمند ورودی‌ها، حذف فضاها و کاراکترهای مخفی و بی‌اثر، و حذف آی‌پی‌های تکراری.
+* **🌐 پشتیبانی از CIDR Subnet:** قابلیت پردازش مستقیم رنج‌های شبکه مانند `104.16.0.0/12`.
+* **💾 ذخیره‌سازی ایزوله:** تفکیک خودکار خروجی‌های سالم در فایل‌های مجزا بر اساس نام CDN.
 
 ---
 
-# ☁️ CDN های پشتیبانی شده
+## ☁️ شبکه‌های CDN پشتیبانی‌شده
 
-- Cloudflare
-- Fastly
-- Netlify
-- Vercel
-- Gcore
-- AWS CloudFront
-- BunnyCDN
-- ArvanCloud
+| لوگو / نشان | نام سرویس‌دهنده (CDN) | دقت شناسایی | رنج بین‌المللی |
+| :---: | :--- | :---: | :---: |
+| 🟠 | **Cloudflare**  | ✅ دارد | 
+| 🟣 | **Fastly** | ✅ دارد | 
+| 🟢 | **Netlify**  | ✅ دارد | 
+| ▲ | **Vercel** | ✅ دارد | 
+| 🔵 | **Gcore**  | ✅ دارد | 
+| ☁️ | **AWS CloudFront** | ✅ دارد | 
+| 🐰 | **BunnyCDN** | ✅ دارد | 
+| ☁️ | **ArvanCloud ** | 🇮🇷 ایران | 
 
 ---
 
-# 📥 نصب و اجرا
+## 🛠 نحوه نصب و راه‌اندازی (Installation)
 
-## 💻 Windows
+### 💻 محیط ویندوز (Windows)
+ابتدا مطئن شوید پایتون روی سیستم شما نصب است و تیک **Add Python to PATH** را زده‌اید. سپس ترمینال (CMD یا PowerShell) را باز کرده و دستورات زیر را وارد کنید:
 
-### 1) نصب Python
-https://python.org
+```powershell
+# دریافت پروژه از گیت‌هاب
+git clone [https://github.com/power-codes/Scanner-IP-CDNs.git](https://github.com/power-codes/Scanner-IP-CDNs.git)
 
-Add Python to PATH را فعال کنید.
-
-### 2) نصب Git
-https://git-scm.com
-
-### 3) Clone
-
-git clone https://github.com/power-codes/Scanner-IP-CDNs.git
+# ورود به پوشه پروژه
 cd Scanner-IP-CDNs
 
-### 4) نصب وابستگی‌ها
-
+# نصب پکیج‌های پیش‌نیاز
 pip install -r requirements.txt
 
-### 5) اجرا
+# اجرای اسکریپت اصلی
+python scanner Pro.py
 
-python scanner.py
+```
 
----
+### 📱 محیط ترموکس (Termux - Android)
 
-## 📱 Termux
+کدهای زیر را کپی کرده و به صورت یکجا در ترموکس پیست کنید:
 
-pkg update -y && pkg upgrade -y
+```bash
+pkg update && pkg upgrade -y
 pkg install python git -y
-
-git clone https://github.com/power-codes/Scanner-IP-CDNs.git
+git clone [https://github.com/power-codes/Scanner-IP-CDNs.git](https://github.com/power-codes/Scanner-IP-CDNs.git)
 cd Scanner-IP-CDNs
-
 pip install -r requirements.txt
 python scanner.py
 
----
-
-## 📁 نصب دستی
-
-1. دانلود ZIP
-2. Extract
-3. اجرا:
-
-pip install -r requirements.txt
-python scanner.py
+```
 
 ---
 
-# 📦 Requirements
+## 📂 ساختار استاندارد فایل ورودی (targets.txt)
 
-flask
-requests
+برنامه به صورت هوشمند ساختارهای زیر را در فایل `targets.txt` تشخیص داده و پردازش می‌کند:
 
----
-
-# 📂 Targets
-
-targets.txt:
-
+```text
+# --- نمونه دامنه‌ها و ساب‌دامنه‌ها ---
 cloudflare.com
+sub.domain.xyz
+my-server.ir
+
+# --- نمونه آی‌پی‌های تکی ---
 1.1.1.1
-104.16.0.0/24
-sub.example.com
+104.18.2.5
+
+# --- نمونه رنج‌های شبکه (CIDR) ---
+172.67.0.0/16
+104.16.0.0/12
+
+```
 
 ---
 
-# ⭐ حمایت کنید 
+## 📦 پیش‌نیازهای فنی (Dependencies)
 
-⭐ Star  
-🍴 Fork  
-📢 Share  
+کتابخانه‌های زیر به صورت خودکار از طریق فایل `requirements.txt` پیکربندی می‌شوند:
+
+* `requests`: برای ارسال ریکوئست‌های لایه لایه اپلیکیشن و وب.
+* `flask`: جهت مدیریت و مانیتورینگ وضعیت اسکن (نسخه پنل).
+* `colorama`: جهت نمایش رنگی و تفکیک لاگ‌های موفق (Success) و ناموفق (Failed) در محیط ترمینال.
 
 ---
 
-# 👨‍💻 توسعه‌دهنده
-Powercodes
+## ⚠️ عیب‌یابی و رفع خطا (Troubleshooting)
 
-🌐 Telegram: https://t.me/powercodes
-📺 YouTube: https://youtube.com/@powercodes
-💻 GitHub: https://github.com/power_codes
+* **خطای `pip: command not found`:** مطمئن شوید در زمان نصب پایتون در ویندوز، گزینه **Add to PATH** را فعال کرده‌اید.
+* **سرعت پایین اسکن:** مقدار `threads` را در تنظیمات داخلی اسکریپت بر اساس کشش پردازنده و سرعت اینترنت خود افزایش دهید (مثلاً روی 50 یا 100 تنظیم کنید).
+* **خطای اتصال در ترموکس:** حتماً قبل از اجرای دستورات، فیلترشکن خود را برای دانلود دپندنسی‌ها روشن کنید.
+
+---
+
+## ⭐ حمایت و توسعه (Support)
+
+اگر این ابزار به شما در پیدا کردن آی‌پی‌های تمیز کمک کرد، می‌توانید با دادن یک **Star** (⭐) به این ریپازیتوری از توسعه آن حمایت کنید. همچنین می‌توانید پروژه را **Fork** کرده و پچ‌های خود را ارسال کنید.
+
+---
+
+## 👨‍💻 کانال‌های ارتباطی توسعه‌دهنده (Contacts)
+
+* **توسعه‌دهنده اصلی:** Powercodes
+* **کانال تلگرام:** [Powercodes Telegram](https://t.me/powercodes)
+* **یوتیوب:** [Powercodes YouTube](https://youtube.com/@powercodes)
+* **گیت‌هاب:** [Powercodes GitHub](https://github.com/power_codes)
+
+---
+
+```
+
+```
