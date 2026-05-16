@@ -60,7 +60,7 @@
 
 ```powershell
 # دریافت پروژه از گیت‌هاب
-git clone [https://github.com/power-codes/Scanner-IP-CDNs.git](https://github.com/power-codes/Scanner-IP-CDNs.git)
+git clone https://github.com/power-codes/Scanner-IP-CDNs.git
 
 # ورود به پوشه پروژه
 cd Scanner-IP-CDNs
@@ -80,7 +80,7 @@ python scanner.py
 ```bash
 pkg update && pkg upgrade -y
 pkg install python git -y
-git clone [https://github.com/power-codes/Scanner-IP-CDNs.git](https://github.com/power-codes/Scanner-IP-CDNs.git)
+git clone https://github.com/power-codes/Scanner-IP-CDNs.git
 cd Scanner-IP-CDNs
 pip install -r requirements.txt
 python scanner.py
@@ -98,12 +98,15 @@ python scanner.py
 # --- نمونه دامنه‌ها و ساب‌دامنه‌ها ---
 example.com
 my-example.com
+
 # --- نمونه آی‌پی‌های تکی ---
 1.1.1.1
 104.18.2.5
+
 # --- نمونه رنج‌های شبکه (CIDR) ---
 172.67.0.0/16
 104.16.0.0/12
+
 
 ```
 
@@ -140,6 +143,3 @@ my-example.com
 
 ---
 
-```
-
-```
