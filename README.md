@@ -32,7 +32,7 @@
 
 ⚠️ فقط پینگ گرفتن ملاک نیست!
 
-در شبکه‌های دارای فیلترینگ، ممکن است یک IP پینگ بدهد اما TCP واقعی نداشته باشد.
+در وضعیت فعلی اینترنت ، ممکن است یک IP پینگ بدهد اما TCP واقعی نداشته باشد.
 
 این ابزار بررسی می‌کند:
 - Ping
@@ -44,13 +44,13 @@
 # ✨ قابلیت‌ها
 
 - اسکن IP / Subnet / Domain / Subdomain
-- Multi Thread Scanner
-- TCP Validation
-- Ping Test
-- CDN Detection
+- مولتی ترد
+- تایید TCP
+- تست پینگ
+- تشخیص cdn ها
 - حذف IP های تکراری
-- خروجی TXT تمیز
-- پشتیبانی از targets.txt
+- حذف متن ها فاصله ها و...
+- دارای لیست ذخیره برای اسکن روزانه
 
 ---
 
@@ -129,7 +129,6 @@ requests
 
 targets.txt:
 
-google.com
 cloudflare.com
 1.1.1.1
 104.16.0.0/24
@@ -137,27 +136,7 @@ sub.example.com
 
 ---
 
-# 📤 خروجی‌ها
-
-- alive_ips.txt
-- clean_domains.txt
-- tcp_valid_ips.txt
-- cdn_detected.txt
-
----
-
-# 🧠 نحوه کار
-
-1. Resolve
-2. Ping
-3. TCP Check
-4. CDN Detect
-5. Clean duplicates
-6. Export
-
----
-
-# ⭐ Support
+# ⭐ حمایت کنید 
 
 ⭐ Star  
 🍴 Fork  
@@ -165,5 +144,9 @@ sub.example.com
 
 ---
 
-# 👨‍💻 Powercodes
-Telegram: https://t.me/powercodes
+# 👨‍💻 توسعه‌دهنده
+Powercodes
+
+🌐 Telegram: https://t.me/powercodes
+📺 YouTube: https://youtube.com/@powercodes
+💻 GitHub: https://github.com/power_codes
