@@ -1,115 +1,110 @@
-# 🚀 `README.md` — Powercodes IP & CDNs Scanner v1.0
 
-````md
+```md
 <div align="center">
 
-# ⚡ Powercodes — IP & Domain Scanner
+# ⚡ Powercodes — IP & CDN Scanner
 ## 🔎 Advanced CDN IP Scanner & TCP Checker
 
 <img src="https://img.shields.io/badge/Python-3.9+-blue?style=for-the-badge&logo=python">
 <img src="https://img.shields.io/badge/Version-1.0-green?style=for-the-badge">
-<img src="https://img.shields.io/badge/Platform-Windows%20%7C%20Termux-orange?style=for-the-badge">
-<img src="https://img.shields.io/badge/CDN-Supported-red?style=for-the-badge">
+<img src="https://img.shields.io/badge/Platform-Windows%20%7C%20Termux%20%7C%20Linux-orange?style=for-the-badge">
+<img src="https://img.shields.io/badge/CDN-Detection-red?style=for-the-badge">
 
 <br>
 
-⚡ اسکن حرفه‌ای IP و دامنه با تشخیص CDN  
-⚡ Ping + TCP Validation  
-⚡ مناسب تست آیپی‌های قابل استفاده  
-⚡ خروجی تمیز و حرفه‌ای  
+**اسکنر حرفه‌ای آی‌پی و دامنه با تشخیص CDN و اعتبارسنجی TCP**
+
+⚡ مناسب تست آیپی‌های Clean و قابل استفاده در پروژه‌های مختلف
 
 <br>
 
-🌐 Telegram: https://t.me/powercodes  
-📺 YouTube: https://youtube.com/@powercodes  
-💻 GitHub: https://github.com/power_codes  
+🌐 **Telegram:** [@powercodes](https://t.me/powercodes)  
+📺 **YouTube:** [@powercodes](https://youtube.com/@powercodes)  
+💻 **GitHub:** [power_codes](https://github.com/power_codes)
 
 </div>
 
 ---
 
-# 🇮🇷 معرفی پروژه
+## 📌 معرفی پروژه
 
-> ⚠️ فقط پینگ گرفتن ملاک نیست!
+> ⚠️ فقط پینگ گرفتن کافی نیست!
 
-در بسیاری از شرایط مخصوصاً روی اینترنت‌های دارای فیلترینگ،  
-ممکن است یک IP پینگ بدهد اما اتصال TCP واقعی برقرار نکند.
+در بسیاری از شبکه‌ها (به‌خصوص اینترنت با فیلترینگ)، آیپی ممکن است **پینگ** بدهد اما اتصال **TCP** برقرار نشود.
 
-بنابراین برای استفاده واقعی از IP ها باید:
+**Powercodes Scanner** دقیقاً همین مشکل را حل کرده:
 
-✅ هم Ping پاسخ بدهد  
-✅ هم TCP Port باز باشد  
-
-این ابزار دقیقاً همین کار را انجام می‌دهد 🔥
-
----
-
-# ✨ قابلیت‌ها
-
-# 🚀 Features
-
-- ✅ اسکن IP تکی
-- ✅ اسکن Subnet
-- ✅ اسکن دامنه و ساب‌دامنه
-- ✅ تشخیص CDN
-- ✅ تست Ping
-- ✅ تست TCP واقعی
-- ✅ خروجی TXT تمیز
-- ✅ حذف خودکار IP های تکراری
-- ✅ حذف متن‌های اضافی
-- ✅ پشتیبانی از فایل Targets
-- ✅ Import فایل Target
-- ✅ Multi Thread Scanner
-- ✅ سرعت بالا
-- ✅ رابط تحت وب Flask
-- ✅ تست شده روی:
-  - Windows
-  - Termux
-  - Linux
+✅ **Ping Test**  
+✅ **TCP Port Validation** (اتصال واقعی)  
+✅ **CDN Detection**  
+✅ **خروجی تمیز و مرتب**
 
 ---
 
-# 🌍 CDN های پشتیبانی شده
+## ✨ قابلیت‌ها
 
-# ☁️ Supported CDN Providers
+### 🚀 Features
 
-| CDN | Supported |
-|------|-----------|
-| Cloudflare | ✅ |
-| Fastly | ✅ |
-| Netlify | ✅ |
-| Vercel | ✅ |
-| Gcore | ✅ |
-| AWS CloudFront | ✅ |
-| BunnyCDN | ✅ |
-| ArvanCloud | ✅ |
-
----
-
-# 🧠 نحوه عملکرد
-
-این ابزار ابتدا:
-
-1️⃣ آیپی یا دامنه را Resolve می‌کند  
-2️⃣ Ping واقعی می‌گیرد  
-3️⃣ اتصال TCP تست می‌کند  
-4️⃣ نوع CDN را تشخیص می‌دهد  
-5️⃣ آیپی‌های تکراری را حذف می‌کند  
-6️⃣ خروجی تمیز TXT می‌سازد  
+- اسکن تک آی‌پی، سابنت و دامنه
+- تشخیص خودکار CDN
+- تست Ping + TCP همزمان
+- پشتیبانی از فایل `targets.txt`
+- حذف خودکار تکراری‌ها و خطوط خراب
+- Multi-Thread (سرعت بالا)
+- رابط تحت وب (Flask)
+- خروجی TXT مرتب و حرفه‌ای
+- تست شده روی **Windows**, **Termux** و **Linux**
 
 ---
 
-# 📂 ساختار فایل Targets
+## ☁️ CDNهای پشتیبانی شده
 
-می‌توانید فایل:
+| CDN            | وضعیت     |
+|---------------|----------|
+| Cloudflare    | ✅       |
+| Fastly        | ✅       |
+| Netlify       | ✅       |
+| Vercel        | ✅       |
+| Gcore         | ✅       |
+| AWS CloudFront| ✅       |
+| BunnyCDN      | ✅       |
+| ArvanCloud    | ✅       |
 
-```txt
-targets.txt
-````
+---
 
-را کنار اسکریپت قرار دهید.
+## 📥 نصب و اجرا
 
-نمونه:
+### Termux
+
+```bash
+pkg update -y && pkg upgrade -y
+pkg install python git -y
+
+git clone https://github.com/power_codes/scanner-ip-cdns.git
+cd scanner-ip-cdns
+
+pip install -r requirements.txt
+python scanner.py
+```
+
+### Windows
+
+1. Python را از [python.org](https://python.org) نصب کنید (**Add to PATH** را بزنید)
+2. Git را از [git-scm.com](https://git-scm.com) نصب کنید
+3. دستورات زیر را اجرا کنید:
+
+```bash
+git clone https://github.com/power_codes/scanner-ip-cdns.git
+cd scanner-ip-cdns
+pip install -r requirements.txt
+python scanner.py
+```
+
+---
+
+## 📂 فایل Targets
+
+فایل `targets.txt` را کنار اسکریپت بسازید:
 
 ```txt
 google.com
@@ -121,224 +116,46 @@ sub.example.com
 
 ---
 
-# 📥 نصب و اجرا — Termux
+## 📤 خروجی‌ها
 
-# 📱 Termux Installation
+ابزار به‌صورت خودکار فایل‌های زیر را تولید می‌کند:
 
-## 1️⃣ نصب پکیج‌ها
-
-```bash
-pkg update -y && pkg upgrade -y
-pkg install python git -y
-```
+- `cloudflare_ips.txt`
+- `fastly_clean.txt`
+- `alive_tcp.txt`
+- `domains_clean.txt`
 
 ---
 
-## 2️⃣ کلون پروژه
+## 🧹 قابلیت‌های هوشمند
 
-```bash
-git clone https://github.com/power_codes/scanner-ip-cdns.git
-```
-
----
-
-## 3️⃣ ورود به پوشه
-
-```bash
-cd scanner-ip-cdns
-```
+- حذف خودکار IPهای تکراری
+- پاک‌سازی خطوط خراب و متن‌های اضافی
+- مرتب‌سازی و تمیز کردن خروجی
 
 ---
 
-## 4️⃣ نصب وابستگی‌ها
+## 📸 اسکرین‌شات‌ها
 
-```bash
-pip install -r requirements.txt
-```
+> به‌زودی اضافه خواهد شد
 
 ---
 
-## 5️⃣ اجرای ابزار
+## ⭐ حمایت از پروژه
 
-```bash
-python scanner.py
-```
+اگر این ابزار برای شما مفید بود:
 
----
-
-# 🖥 نصب و اجرا — Windows
-
-# 💻 Windows Installation
-
-## 1️⃣ نصب Python
-
-دانلود:
-
-[https://python.org](https://python.org)
-
-⚠️ هنگام نصب گزینه:
-
-```txt
-Add Python to PATH
-```
-
-را فعال کنید.
-
----
-
-## 2️⃣ نصب Git
-
-دانلود:
-
-[https://git-scm.com](https://git-scm.com)
-
----
-
-## 3️⃣ کلون پروژه
-
-```bash
-git clone https://github.com/power_codes/scanner-ip-cdns.git
-```
-
----
-
-## 4️⃣ ورود به پوشه
-
-```bash
-cd scanner-ip-cdns
-```
-
----
-
-## 5️⃣ نصب وابستگی‌ها
-
-```bash
-pip install -r requirements.txt
-```
-
----
-
-## 6️⃣ اجرای ابزار
-
-```bash
-python scanner.py
-```
-
----
-
-# 📦 نصب دستی
-
-# 📁 Manual Installation
-
-اگر Git ندارید:
-
-1️⃣ سورس را ZIP دانلود کنید
-2️⃣ Extract کنید
-3️⃣ CMD یا Termux را باز کنید
-4️⃣ وارد پوشه شوید
-5️⃣ اجرا کنید:
-
-```bash
-pip install -r requirements.txt
-python scanner.py
-```
-
----
-
-# 📄 فایل Dependencies
-
-# 📦 requirements.txt
-
-```txt
-flask
-requests
-```
-
----
-
-# 📤 خروجی‌ها
-
-ابزار خروجی تمیز TXT تولید می‌کند:
-
-```txt
-cloudflare_ips.txt
-fastly_clean.txt
-alive_tcp.txt
-domains_clean.txt
-```
-
----
-
-# ⚡ قابلیت حذف خودکار موارد اضافی
-
-# 🧹 Auto Cleaner
-
-ابزار به صورت خودکار:
-
-* IP های تکراری را حذف می‌کند
-* خطوط خراب را پاک می‌کند
-* متن‌های اضافی را حذف می‌کند
-* خروجی مرتب تولید می‌کند
-
----
-
-# 🔥 چرا این ابزار متفاوت است؟
-
-# ⭐ Why This Tool Is Different?
-
-بیشتر اسکنرها فقط Ping می‌گیرند ❌
-
-اما این ابزار:
-
-✅ Ping واقعی
-✅ TCP Validation
-✅ CDN Detection
-✅ Clean Output
-✅ High Speed Multi Thread
-
-را همزمان انجام می‌دهد.
-
----
-
-# 📸 اسکرین‌شات
-
-> به زودی...
-
----
-
-# 🛡 نسخه
-
-```txt
-Version: 1.0
-```
-
----
-
-# ❤️ حمایت از پروژه
-
-اگر پروژه برات مفید بود:
-
-⭐ Repo رو Star کن
-🍴 Fork کن
-📢 Share کن
-
----
-
-# 👨‍💻 توسعه‌دهنده
-
-## Powercodes
-
-🌐 Telegram: [https://t.me/powercodes](https://t.me/powercodes)
-📺 YouTube: [https://youtube.com/@powercodes](https://youtube.com/@powercodes)
-💻 GitHub: [https://github.com/power_codes](https://github.com/power_codes)
+- **Star** این ریپازیتوری را بزنید
+- پروژه را برای دوستانتان **Share** کنید
+- در صورت داشتن ایده یا باگ، Issue باز کنید
 
 ---
 
 <div align="center">
 
-# ⭐ Give This Project A Star ⭐
+**Made with ❤️ by Powercodes**
 
-🔥 Made With Python & Powercodes 🔥
+**Version 1.0**
 
 </div>
 ```
