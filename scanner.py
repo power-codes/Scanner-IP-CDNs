@@ -9,7 +9,7 @@ ping + TCP + CDN Detection
 TELEGRAM_CHANNEL = "https://t.me/powercodes"
 TELEGRAM_HANDLE  = "@powercodes"
 YOUTUBE_CHANNEL  = "https://youtube.com/@powercodes"
-GITHUB_REPO      = "https://github.com/power_codes"
+GITHUB_REPO      = "https://github.com/power-codes"
 TOOL_NAME        = "Scanner IP CDN"
 TOOL_VERSION     = "1.0"
 # ----------------
