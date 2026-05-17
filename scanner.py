@@ -1,221 +1,95 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-╔══════════════════════════════════════════════════════════════╗
-║                Powercodes — IP & Domain Scanner              ║
-║                  پینگ + TCP اسکنر با تشخیص CDN               ║
-╚══════════════════════════════════════════════════════════════╝
-
-تمام حقوق محفوظ است — Powercodes
+Powercodes - IP & Domain Scanner
+ping + TCP + CDN Detection
 """
 
-# ─── تبلیغات — این متغیرها رو خودتون عوض کنید ──────────────────
-TELEGRAM_CHANNEL  = "https://t.me/powercodes"
-TELEGRAM_HANDLE   = "@powercodes"
-YOUTUBE_CHANNEL   = "https://youtube.com/@powercodes"
-GITHUB_REPO       = "https://github.com/power_codes"
-TOOL_NAME         = "Scanner IP CDN"
-TOOL_VERSION      = "1.0"
-# ─────────────────────────────────────────────────────────────────
+# --- تبلیغات ---
+TELEGRAM_CHANNEL = "https://t.me/powercodes"
+TELEGRAM_HANDLE  = "@powercodes"
+YOUTUBE_CHANNEL  = "https://youtube.com/@powercodes"
+GITHUB_REPO      = "https://github.com/power_codes"
+TOOL_NAME        = "Scanner IP CDN"
+TOOL_VERSION     = "1.0"
+# ----------------
 
+import concurrent.futures
 import ipaddress
 import json
 import logging
 import os
 import platform
 import re
-import select
 import socket
-import struct
+import subprocess
 import threading
 import time
 import webbrowser
-import concurrent.futures
 from datetime import datetime
 from pathlib import Path
 
 from flask import (
     Flask, jsonify, render_template_string,
-    request, send_from_directory, Response, stream_with_context
+    request, Response, stream_with_context
 )
 
-# ══════════════════════════════════════════════════════════════════
-#  خاموش کردن لاگ ترمینال Flask/Werkzeug
-# ══════════════════════════════════════════════════════════════════
-log = logging.getLogger('werkzeug')
+log = logging.getLogger("werkzeug")
 log.setLevel(logging.ERROR)
 
-# ══════════════════════════════════════════════════════════════════
-#  تشخیص پلتفرم
-# ══════════════════════════════════════════════════════════════════
 IS_WINDOWS = platform.system().lower() == "windows"
-IS_ANDROID = "ANDROID_ROOT" in os.environ or "com.termux" in os.environ.get("PREFIX", "")
 
 # ══════════════════════════════════════════════════════════════════
-#  ICMP Ping بدون subprocess — pure socket
-# ══════════════════════════════════════════════════════════════════
+#  Ping ══════════════════════════════════════════════════════════════════
 
-def _checksum(data: bytes) -> int:
-    if len(data) % 2 != 0:
-        data += b'\x00'
-    s = 0
-    for i in range(0, len(data), 2):
-        w = (data[i] << 8) + data[i + 1]
-        s += w
-    s = (s >> 16) + (s & 0xFFFF)
-    s += (s >> 16)
-    return ~s & 0xFFFF
+def check_ping(host: str, timeout_ms: int = 1500) -> tuple:
+    """پینگ واقعی با subprocess — دقیقاً منطق قدیمی"""
+    if IS_WINDOWS:
+        command = ["ping", "-n", "1", "-w", str(timeout_ms), host]
+    else:
+        command = ["ping", "-c", "1", "-W", str(max(1, int(timeout_ms / 1000))), host]
 
-
-def _build_icmp_packet(seq: int = 1) -> bytes:
-    icmp_type = 8
-    icmp_code = 0
-    icmp_id   = threading.get_ident() & 0xFFFF
-    header = struct.pack("!BBHHH", icmp_type, icmp_code, 0, icmp_id, seq)
-    payload = b"PowercodesScanner" + struct.pack("d", time.perf_counter())
-    chk = _checksum(header + payload)
-    header = struct.pack("!BBHHH", icmp_type, icmp_code, chk, icmp_id, seq)
-    return header + payload
-
-
-def _try_raw_ping(host: str, timeout: float) -> tuple:
     try:
-        sock = socket.socket(socket.AF_INET, socket.SOCK_RAW, socket.IPPROTO_ICMP)
-        sock.settimeout(timeout)
-        packet = _build_icmp_packet(seq=1)
-        start = time.perf_counter()
-        sock.sendto(packet, (host, 0))
-        while True:
-            ready = select.select([sock], [], [], timeout)
-            if not ready[0]:
-                break
-            recv_packet, _ = sock.recvfrom(1024)
-            elapsed = (time.perf_counter() - start) * 1000
-            icmp_type = recv_packet[20]
-            if icmp_type == 0:
-                sock.close()
-                return True, round(elapsed, 1)
-        sock.close()
-        return False, 0.0
-    except PermissionError:
-        return None, 0.0
+        proc = subprocess.run(
+            command,
+            capture_output=True,
+            text=True,
+            timeout=(timeout_ms / 1000) + 2,
+        )
+        output = (proc.stdout or "") + "\n" + (proc.stderr or "")
+        ok = proc.returncode == 0
+
+        latency = None
+        match_int   = re.search(r"time[=<]\s*(\d+)\s*ms", output, flags=re.IGNORECASE)
+        match_float = re.search(r"time[=<]\s*(\d+(?:\.\d+)?)", output, flags=re.IGNORECASE)
+        if match_int:
+            latency = float(match_int.group(1))
+        elif match_float:
+            latency = float(match_float.group(1))
+
+        return ok, latency
     except Exception:
-        return False, 0.0
+        return False, None
 
 
-def _try_dgram_ping(host: str, timeout: float) -> tuple:
+def check_tcp(target: str, port: int = 443, timeout: float = 2.0) -> tuple:
     try:
-        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_ICMP)
-        sock.settimeout(timeout)
-        packet = _build_icmp_packet(seq=1)
         start = time.perf_counter()
-        sock.sendto(packet, (host, 0))
-        ready = select.select([sock], [], [], timeout)
-        if ready[0]:
-            sock.recvfrom(1024)
+        with socket.create_connection((target, port), timeout=timeout):
             elapsed = (time.perf_counter() - start) * 1000
-            sock.close()
-            return True, round(elapsed, 1)
-        sock.close()
-        return False, 0.0
+        return True, round(elapsed, 1)
     except Exception:
-        return False, 0.0
-
-
-def _tcp_ping(host: str, timeout: float) -> tuple:
-    for port in (80, 443, 53):
-        try:
-            start = time.perf_counter()
-            sock = socket.create_connection((host, port), timeout=timeout)
-            elapsed = (time.perf_counter() - start) * 1000
-            sock.close()
-            return True, round(elapsed, 1)
-        except Exception:
-            continue
-    return False, 0.0
-
-
-def ping_target(target: str, timeout: float = 1.5) -> tuple:
-    host = resolve_domain(target)
-    result, ms = _try_raw_ping(host, timeout)
-    if result is True:
-        return True, ms
-    elif result is False:
-        return False, 0.0
-    if not IS_WINDOWS:
-        result, ms = _try_dgram_ping(host, timeout)
-        if result:
-            return True, ms
-    return _tcp_ping(host, timeout)
+        return False, None
 
 
 # ══════════════════════════════════════════════════════════════════
-#  تمیزکننده IP و دامنه
+#  DNS + پاکسازی هدف‌ها
 # ══════════════════════════════════════════════════════════════════
 MAX_SUBNET_IPS = 1024
 MAX_TOTAL_IPS  = 50_000
 
-
-def expand_subnet(cidr: str) -> list:
-    try:
-        net = ipaddress.IPv4Network(cidr, strict=False)
-        hosts = list(net.hosts()) or list(net)
-        return [str(ip) for ip in hosts[:MAX_SUBNET_IPS]]
-    except ValueError:
-        return []
-
-
-_cidr_re = re.compile(
-    r'\b((?:(?:25[0-5]|2[0-4]\d|[01]?\d\d?)\.){3}'
-    r'(?:25[0-5]|2[0-4]\d|[01]?\d\d?)/\d{1,2})\b'
-)
-_ip_re = re.compile(
-    r'\b((?:(?:25[0-5]|2[0-4]\d|[01]?\d\d?)\.){3}'
-    r'(?:25[0-5]|2[0-4]\d|[01]?\d\d?))\b'
-)
-_domain_re = re.compile(
-    r'\b((?:[a-zA-Z0-9](?:[a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?\.)'
-    r'+[a-zA-Z]{2,})\b'
-)
-
-
-def clean_targets(raw_text: str) -> list:
-    targets: set = set()
-    for line in raw_text.splitlines():
-        if len(targets) >= MAX_TOTAL_IPS:
-            break
-        line = line.strip()
-        if not line or line.startswith('#'):
-            continue
-        cidr_found = False
-        for match in _cidr_re.finditer(line):
-            cidr_found = True
-            for ip in expand_subnet(match.group(1)):
-                targets.add(ip)
-                if len(targets) >= MAX_TOTAL_IPS:
-                    break
-        remaining = _cidr_re.sub('', line) if cidr_found else line
-        for match in _ip_re.finditer(remaining):
-            ip = match.group(1)
-            try:
-                ipaddress.ip_address(ip)
-                targets.add(ip)
-            except ValueError:
-                pass
-        remaining2 = _ip_re.sub('', _cidr_re.sub('', line))
-        for match in _domain_re.finditer(remaining2):
-            dom = match.group(1).lower()
-            if len(dom) > 3 and '.' in dom:
-                targets.add(dom)
-    return sorted(targets)[:MAX_TOTAL_IPS]
-
-
-# ══════════════════════════════════════════════════════════════════
-#  DNS Resolve با cache
-# ══════════════════════════════════════════════════════════════════
 _dns_cache: dict = {}
 _dns_lock = threading.Lock()
-
 
 def resolve_domain(target: str) -> str:
     try:
@@ -235,18 +109,48 @@ def resolve_domain(target: str) -> str:
         return target
 
 
-# ══════════════════════════════════════════════════════════════════
-#  TCP Connect
-# ══════════════════════════════════════════════════════════════════
-def tcp_connect(target: str, port: int = 443, timeout: float = 2.0) -> tuple:
+def expand_subnet(cidr: str) -> list:
     try:
-        start = time.perf_counter()
-        sock = socket.create_connection((target, port), timeout=timeout)
-        elapsed = (time.perf_counter() - start) * 1000
-        sock.close()
-        return True, round(elapsed, 1)
-    except Exception:
-        return False, 0.0
+        net = ipaddress.IPv4Network(cidr, strict=False)
+        hosts = list(net.hosts()) or list(net)
+        return [str(ip) for ip in hosts[:MAX_SUBNET_IPS]]
+    except ValueError:
+        return []
+
+
+_cidr_re   = re.compile(r'\b((?:(?:25[0-5]|2[0-4]\d|[01]?\d\d?)\.){3}(?:25[0-5]|2[0-4]\d|[01]?\d\d?)/\d{1,2})\b')
+_ip_re     = re.compile(r'\b((?:(?:25[0-5]|2[0-4]\d|[01]?\d\d?)\.){3}(?:25[0-5]|2[0-4]\d|[01]?\d\d?))\b')
+_domain_re = re.compile(r'\b((?:[a-zA-Z0-9](?:[a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,})\b')
+
+def clean_targets(raw_text: str) -> list:
+    targets: set = set()
+    for line in raw_text.splitlines():
+        if len(targets) >= MAX_TOTAL_IPS:
+            break
+        line = line.strip()
+        if not line or line.startswith("#"):
+            continue
+        cidr_found = False
+        for match in _cidr_re.finditer(line):
+            cidr_found = True
+            for ip in expand_subnet(match.group(1)):
+                targets.add(ip)
+                if len(targets) >= MAX_TOTAL_IPS:
+                    break
+        remaining = _cidr_re.sub("", line) if cidr_found else line
+        for match in _ip_re.finditer(remaining):
+            ip = match.group(1)
+            try:
+                ipaddress.ip_address(ip)
+                targets.add(ip)
+            except ValueError:
+                pass
+        remaining2 = _ip_re.sub("", _cidr_re.sub("", line))
+        for match in _domain_re.finditer(remaining2):
+            dom = match.group(1).lower()
+            if len(dom) > 3 and "." in dom:
+                targets.add(dom)
+    return sorted(targets)[:MAX_TOTAL_IPS]
 
 
 # ══════════════════════════════════════════════════════════════════
@@ -261,58 +165,38 @@ CDN_RANGES = [
         "197.234.240.0/22","198.41.128.0/17",
     ]),
     ("Google", [
-        "8.8.4.0/24","8.8.8.0/24","8.34.208.0/20","8.35.192.0/20",
-        "23.236.48.0/20","23.251.128.0/19","34.0.0.0/8","35.0.0.0/8",
-        "64.233.160.0/19","66.102.0.0/20","66.249.64.0/19","70.32.128.0/19",
-        "72.14.192.0/18","74.125.0.0/16","104.132.0.0/14","104.154.0.0/15",
-        "104.196.0.0/14","107.167.160.0/19","107.178.192.0/18",
-        "108.59.80.0/20","108.170.192.0/18","108.177.0.0/17",
-        "130.211.0.0/22","136.22.0.0/15","136.112.0.0/12","142.250.0.0/15",
-        "146.148.0.0/17","162.216.148.0/22","162.222.176.0/21",
+        "8.8.4.0/24","8.8.8.0/24","34.0.0.0/8","35.0.0.0/8",
+        "64.233.160.0/19","66.102.0.0/20","66.249.64.0/19","74.125.0.0/16",
+        "104.132.0.0/14","108.177.0.0/17","142.250.0.0/15",
         "172.217.0.0/16","172.253.0.0/16","173.194.0.0/16",
-        "192.158.28.0/22","199.36.154.0/23","199.192.112.0/22",
-        "199.223.232.0/21","207.223.160.0/20","209.85.128.0/17",
-        "216.58.192.0/19","216.73.80.0/20","216.239.32.0/19",
+        "209.85.128.0/17","216.58.192.0/19","216.239.32.0/19",
     ]),
     ("Fastly", [
         "23.235.32.0/20","43.249.72.0/22","103.244.50.0/24",
-        "103.245.222.0/23","103.245.224.0/24","104.156.80.0/20",
-        "140.248.64.0/18","140.248.128.0/17","146.75.0.0/16",
-        "151.101.0.0/16","157.52.64.0/18","167.82.0.0/17",
-        "167.82.128.0/20","167.82.160.0/20","167.82.224.0/20",
-        "172.111.64.0/18","185.31.16.0/22","199.27.72.0/21","199.232.0.0/16",
+        "104.156.80.0/20","146.75.0.0/16","151.101.0.0/16",
+        "157.52.64.0/18","167.82.0.0/17","199.27.72.0/21","199.232.0.0/16",
     ]),
     ("Akamai", [
-        "2.16.0.0/13","2.22.232.0/21","2.22.240.0/20","23.0.0.0/12",
-        "23.32.0.0/11","23.64.0.0/14","23.72.0.0/13","23.192.0.0/11",
-        "63.0.0.0/8","69.192.0.0/16","72.246.0.0/15","88.221.0.0/16",
-        "92.122.0.0/15","95.100.0.0/15","96.6.0.0/15","96.16.0.0/15",
-        "104.64.0.0/10","124.0.0.0/8","125.0.0.0/8","184.24.0.0/13",
-        "184.50.0.0/15","184.84.0.0/14","203.0.0.0/8","205.0.0.0/8","212.0.0.0/8",
+        "2.16.0.0/13","23.0.0.0/12","23.32.0.0/11","23.64.0.0/14",
+        "23.72.0.0/13","23.192.0.0/11","63.0.0.0/8","69.192.0.0/16",
+        "72.246.0.0/15","88.221.0.0/16","95.100.0.0/15","104.64.0.0/10",
+        "184.24.0.0/13","184.50.0.0/15","184.84.0.0/14",
     ]),
     ("Netlify", [
         "3.33.128.0/17","13.32.0.0/15","13.35.0.0/16","18.64.0.0/14",
-        "44.226.105.0/24","44.235.184.0/24","50.7.4.0/24","50.7.87.0/24",
-        "52.84.0.0/15","52.124.128.0/17","54.182.0.0/16","54.200.246.0/24",
-        "63.141.252.0/24","99.83.128.0/17","104.198.14.52/32",
-        "142.54.186.0/24","162.159.128.0/20","192.30.252.0/22",
+        "44.226.105.0/24","44.235.184.0/24","52.84.0.0/15",
+        "54.182.0.0/16","99.83.128.0/17","162.159.128.0/20",
     ]),
     ("Vercel", [
-        "64.29.17.0/24","64.29.18.0/24","64.29.19.0/24","66.33.60.0/24",
-        "66.33.61.0/24","76.76.21.0/24","76.223.126.0/24",
-        "198.169.0.0/16","216.230.0.0/16",
-    ]),
-    ("BunnyCDN", [
-        "89.187.160.0/19","147.75.0.0/16",
-    ]),
-    ("Gcore", [
-        "92.223.0.0/16","95.85.0.0/16","103.134.0.0/16",
-        "185.158.0.0/16","195.5.0.0/16",
+        "64.29.17.0/24","64.29.18.0/24","64.29.19.0/24",
+        "66.33.60.0/24","66.33.61.0/24","76.76.21.0/24","76.223.126.0/24",
     ]),
     ("CloudFront", [
-        "13.32.0.0/15","13.35.0.0/16","18.64.0.0/14","52.46.0.0/18",
-        "52.84.0.0/15","54.182.0.0/16","99.84.0.0/16","130.176.0.0/17",
+        "52.46.0.0/18","52.84.0.0/15","54.182.0.0/16",
+        "99.84.0.0/16","130.176.0.0/17",
     ]),
+    ("BunnyCDN", ["89.187.160.0/19","147.75.0.0/16"]),
+    ("Gcore",    ["92.223.0.0/16","95.85.0.0/16","185.158.0.0/16"]),
 ]
 
 _compiled_ranges = []
@@ -322,7 +206,6 @@ for _cdn_name, _ranges in CDN_RANGES:
             _compiled_ranges.append((ipaddress.ip_network(_r, strict=False), _cdn_name))
         except ValueError:
             pass
-
 
 def detect_cdn(ip_str: str) -> str:
     try:
@@ -338,21 +221,26 @@ def detect_cdn(ip_str: str) -> str:
 # ══════════════════════════════════════════════════════════════════
 #  هسته اسکن
 # ══════════════════════════════════════════════════════════════════
-def scan_single(target: str, port: int, ping_timeout: float, tcp_timeout: float) -> dict:
-    cdn = "Unknown"
+def scan_single(target: str, port: int, ping_timeout_ms: int, tcp_timeout: float) -> dict:
+    cdn         = "Unknown"
     resolved_ip = None
+
     try:
         ipaddress.ip_address(target)
         resolved_ip = target
         cdn = detect_cdn(target)
     except ValueError:
-        resolved_ip_tmp = resolve_domain(target)
-        if resolved_ip_tmp != target:
-            resolved_ip = resolved_ip_tmp
+        r = resolve_domain(target)
+        if r != target:
+            resolved_ip = r
             cdn = detect_cdn(resolved_ip)
 
-    ping_ok, ping_ms = ping_target(resolved_ip or target, timeout=ping_timeout)
-    tcp_ok,  tcp_ms  = tcp_connect(target, port=port, timeout=tcp_timeout)
+    # پینگ واقعی با subprocess — به IP resolve شده می‌زنیم
+    ping_host = resolved_ip if resolved_ip else target
+    ping_ok, ping_ms = check_ping(ping_host, timeout_ms=ping_timeout_ms)
+
+    # TCP به target اصلی (دامنه یا IP)
+    tcp_ok, tcp_ms = check_tcp(target, port=port, timeout=tcp_timeout)
 
     if ping_ok and tcp_ok:
         status = "both"
@@ -368,7 +256,7 @@ def scan_single(target: str, port: int, ping_timeout: float, tcp_timeout: float)
         "resolved_ip": resolved_ip or "",
         "cdn":         cdn,
         "ping_ok":     ping_ok,
-        "ping_ms":     ping_ms,
+        "ping_ms":     round(ping_ms, 1) if ping_ms is not None else None,
         "tcp_ok":      tcp_ok,
         "tcp_ms":      tcp_ms,
         "status":      status,
@@ -380,11 +268,11 @@ def scan_single(target: str, port: int, ping_timeout: float, tcp_timeout: float)
 #  State مشترک
 # ══════════════════════════════════════════════════════════════════
 scan_state = {
-    "running":  False,
-    "results":  [],
-    "total":    0,
-    "scanned":  0,
-    "lock":     threading.Lock(),
+    "running": False,
+    "results": [],
+    "total":   0,
+    "scanned": 0,
+    "lock":    threading.Lock(),
 }
 
 # ══════════════════════════════════════════════════════════════════
@@ -514,11 +402,25 @@ tbody td{padding:9px 16px;font-family:'Cascadia Code','Consolas',monospace;font-
 .cdn-akamai{background:rgba(16,185,129,.12);color:#34d399}
 .cdn-netlify{background:rgba(99,102,241,.12);color:#a5b4fc}
 .cdn-vercel{background:rgba(255,255,255,.08);color:#e2e8f0}
-.cdn-arvancloud{background:rgba(255,215,0,.12);color:var(--gold)}
+.cdn-cloudfront{background:rgba(255,165,0,.12);color:#ffa500}
+.cdn-bunnycdn{background:rgba(255,105,180,.12);color:#ff69b4}
+.cdn-gcore{background:rgba(0,191,255,.12);color:#00bfff}
 .cdn-unknown{background:var(--surface);color:var(--muted)}
 .empty-state{padding:60px 20px;text-align:center;color:var(--muted)}
 .empty-state-icon{font-size:2.5rem;margin-bottom:12px;opacity:.4}
 .empty-state-text{font-size:.82rem}
+
+/* فیلتر خروجی */
+.export-filter{padding:12px 18px;border-top:1px solid var(--border);display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:var(--surface)}
+.export-filter-label{font-size:.6rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);white-space:nowrap}
+.filter-chips{display:flex;gap:6px;flex-wrap:wrap}
+.filter-chip{padding:4px 10px;border-radius:999px;border:1px solid var(--border);background:transparent;color:var(--muted);font-size:.65rem;font-weight:600;cursor:pointer;transition:all .2s;letter-spacing:.04em}
+.filter-chip.active-both{background:var(--teal-dim);color:var(--teal);border-color:rgba(0,212,170,.4)}
+.filter-chip.active-tcp{background:var(--gold-dim);color:var(--gold);border-color:rgba(255,215,0,.4)}
+.filter-chip.active-ping{background:var(--amber-dim);color:var(--amber);border-color:rgba(251,191,36,.4)}
+.filter-chip.active-cdn{background:rgba(249,115,22,.12);color:#fb923c;border-color:rgba(249,115,22,.3)}
+.filter-chip.active-all{background:var(--green-dim);color:var(--green);border-color:rgba(52,211,153,.4)}
+
 .tabs{display:flex;gap:2px;background:var(--bg3);border-radius:var(--radius-sm);padding:3px;margin-bottom:14px}
 .tab-btn{flex:1;padding:7px 6px;border-radius:6px;border:none;background:transparent;color:var(--muted);font-size:.68rem;font-weight:600;cursor:pointer;letter-spacing:.05em;transition:all .2s;white-space:nowrap}
 .tab-btn.active{background:var(--bg2);color:var(--gold);border:1px solid var(--border-hi);box-shadow:0 1px 4px rgba(0,0,0,.3)}
@@ -552,7 +454,7 @@ tbody td{padding:9px 16px;font-family:'Cascadia Code','Consolas',monospace;font-
       <div class="brand-icon">📡</div>
       <div>
         <div class="brand-name">PowerCodes</div>
-        <div class="brand-ver">v1.0 · IP + Domain cdn </div>
+        <div class="brand-ver">v2.0 · IP + Domain CDN</div>
       </div>
     </div>
     <div class="header-right">
@@ -570,81 +472,81 @@ tbody td{padding:9px 16px;font-family:'Cascadia Code','Consolas',monospace;font-
           GitHub
         </a>
       </div>
-      <button class="theme-btn" id="themeBtn" title="تغییر تم">🌙</button>
+      <button class="theme-btn" id="themeBtn" title="Change Theme">🌙</button>
     </div>
   </div>
 
   <div class="main-grid">
     <div class="sidebar">
       <div class="card panel">
-        <div class="panel-title"><span class="panel-title-dot"></span>اهداف اسکن</div>
+        <div class="panel-title"><span class="panel-title-dot"></span>Scan Targets</div>
         <div class="tabs">
-          <button class="tab-btn active" onclick="switchTab('manual')">✏️ دستی</button>
-          <button class="tab-btn" onclick="switchTab('template')">📋 قالب</button>
-          <button class="tab-btn" onclick="switchTab('file')">📁 فایل</button>
+          <button class="tab-btn active" onclick="switchTab('manual')">Manual</button>
+          <button class="tab-btn" onclick="switchTab('template')">Template</button>
+          <button class="tab-btn" onclick="switchTab('file')">File</button>
         </div>
 
         <div class="tab-panel active" id="tab-manual">
           <div class="field">
-            <label class="field-label">IP / سابنت / دامنه<span class="field-value" id="targetCount">0</span></label>
+            <label class="field-label">IP / Subnet / Domain<span class="field-value" id="targetCount">0</span></label>
             <textarea class="inp" id="targetsInput" rows="8"
-              placeholder="هر خط یک هدف:&#10;1.2.3.4&#10;192.168.1.0/24&#10;example.com"></textarea>
-            <div style="font-size:.6rem;color:var(--muted);margin-top:4px;">✓ سابنت CIDR گسترش داده میشه · تکراری حذف میشه</div>
-            <div id="subnetInfo" class="subnet-info hidden">📡 <span id="subnetCount">0</span> آی‌پی از سابنت‌ها استخراج شد</div>
+              placeholder="one per line:&#10;1.2.3.4&#10;192.168.1.0/24&#10;example.com"></textarea>
+            <div style="font-size:.6rem;color:var(--muted);margin-top:4px;">CIDR subnets expand · duplicates removed</div>
+            <div id="subnetInfo" class="subnet-info hidden">📡 <span id="subnetCount">0</span> IPs from subnets</div>
           </div>
         </div>
 
         <div class="tab-panel" id="tab-template">
           <div class="tpl-grid" id="tplGrid"></div>
-          <div style="margin-top:10px;font-size:.62rem;color:var(--muted);">💡 فایل <code style="color:var(--teal)">targets.txt</code> رو کنار اسکریپت بذار</div>
+          <div style="margin-top:10px;font-size:.62rem;color:var(--muted);">Place <code style="color:var(--teal)">targets.txt</code> next to the script</div>
         </div>
 
         <div class="tab-panel" id="tab-file">
           <div class="drop-zone" id="dropZone">
             <input type="file" id="fileInput" accept=".txt,.csv,.list">
             <div class="drop-icon">📂</div>
-            <div class="drop-text">فایل TXT رو اینجا بنداز<br>یا <strong>کلیک کن</strong> تا انتخاب کنی</div>
+            <div class="drop-text">Drop TXT file here<br>or <strong>click to select</strong></div>
           </div>
           <div id="fileInfo" style="margin-top:8px;font-size:.65rem;color:var(--muted);display:none;"></div>
         </div>
 
         <div style="margin-top:14px;">
           <div class="field">
-            <label class="field-label">پورت TCP<span class="field-value" id="portVal">443</span></label>
+            <label class="field-label">TCP Port<span class="field-value" id="portVal">443</span></label>
             <input class="inp" type="number" id="portInput" value="443" min="1" max="65535">
           </div>
           <div class="field">
-            <label class="field-label">تایم‌اوت پینگ (ثانیه)<span class="field-value" id="pingTOVal">1.5</span></label>
-            <input type="range" class="slider" id="pingTO" min="0.5" max="5" step="0.5" value="1.5">
+            <label class="field-label">Ping Timeout (ms)<span class="field-value" id="pingTOVal">1500</span></label>
+            <input type="range" class="slider" id="pingTO" min="500" max="5000" step="250" value="1500">
           </div>
           <div class="field">
-            <label class="field-label">تایم‌اوت TCP (ثانیه)<span class="field-value" id="tcpTOVal">2</span></label>
+            <label class="field-label">TCP Timeout (s)<span class="field-value" id="tcpTOVal">2</span></label>
             <input type="range" class="slider" id="tcpTO" min="0.5" max="10" step="0.5" value="2">
           </div>
           <div class="field">
-            <label class="field-label">تعداد Thread همزمان<span class="field-value" id="workersVal">50</span></label>
+            <label class="field-label">Threads<span class="field-value" id="workersVal">50</span></label>
             <input type="range" class="slider" id="workersSlider" min="5" max="200" step="5" value="50">
           </div>
           <div class="toggle-row">
-            <span class="toggle-label">مرتب‌سازی خودکار</span>
+            <span class="toggle-label">Auto Sort</span>
             <label class="toggle-wrap">
               <input type="checkbox" class="toggle-input" id="autoSortToggle" checked>
               <span class="toggle-track"></span><span class="toggle-thumb"></span>
             </label>
           </div>
           <div class="field" style="margin-top:8px;">
-            <label class="field-label">مرتب‌سازی بر اساس</label>
+            <label class="field-label">Sort By</label>
             <select class="inp" id="sortBy">
-              <option value="status">وضعیت (هر دو اول)</option>
-              <option value="ping">پینگ (کمترین اول)</option>
-              <option value="tcp">TCP (کمترین اول)</option>
-              <option value="cdn_cf">Cloudflare اول</option>
-              <option value="cdn_g">Google اول</option>
-              <option value="cdn_nl">Netlify اول</option>
-              <option value="cdn_vc">Vercel اول</option>
-              <option value="cdn_fy">Fastly اول</option>
-              <option value="cdn_ak">Akamai اول</option>
-              <option value="cdn_ar">ArvanCloud اول</option>
+              <option value="status">Status (both first)</option>
+              <option value="ping">Ping (lowest first)</option>
+              <option value="tcp">TCP (lowest first)</option>
+              <option value="cdn_cf">Cloudflare first</option>
+              <option value="cdn_g">Google first</option>
+              <option value="cdn_nl">Netlify first</option>
+              <option value="cdn_vc">Vercel first</option>
+              <option value="cdn_fy">Fastly first</option>
+              <option value="cdn_ak">Akamai first</option>
+              <option value="cdn_cf2">CloudFront first</option>
             </select>
           </div>
         </div>
@@ -652,19 +554,19 @@ tbody td{padding:9px 16px;font-family:'Cascadia Code','Consolas',monospace;font-
         <div class="btn-row">
           <button class="btn btn-scan" id="scanBtn">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5,3 19,12 5,21"/></svg>
-            <span>شروع اسکن</span>
+            <span>Start Scan</span>
           </button>
           <button class="btn btn-stop hidden" id="stopBtn">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="5" y="5" width="14" height="14" rx="2"/></svg>
-            <span>توقف</span>
+            <span>Stop</span>
           </button>
         </div>
 
         <div class="metrics">
-          <div class="metric teal"><div class="metric-num" id="mBoth">0</div><div class="metric-lbl">پینگ + TCP</div></div>
-          <div class="metric gold"><div class="metric-num" id="mTcp">0</div><div class="metric-lbl">فقط TCP</div></div>
-          <div class="metric green"><div class="metric-num" id="mScanned">0</div><div class="metric-lbl">اسکن شده</div></div>
-          <div class="metric red"><div class="metric-num" id="mDead">0</div><div class="metric-lbl">ناموفق</div></div>
+          <div class="metric teal"><div class="metric-num" id="mBoth">0</div><div class="metric-lbl">Ping + TCP</div></div>
+          <div class="metric gold"><div class="metric-num" id="mTcp">0</div><div class="metric-lbl">TCP Only</div></div>
+          <div class="metric green"><div class="metric-num" id="mScanned">0</div><div class="metric-lbl">Scanned</div></div>
+          <div class="metric red"><div class="metric-num" id="mDead">0</div><div class="metric-lbl">Dead</div></div>
         </div>
         <div class="progress-wrap"><div class="progress-bar" id="progressBar"></div></div>
       </div>
@@ -672,20 +574,38 @@ tbody td{padding:9px 16px;font-family:'Cascadia Code','Consolas',monospace;font-
 
     <div class="card results-panel">
       <div class="results-header">
-        <div class="results-title"><span class="panel-title-dot"></span>نتایج اسکن</div>
+        <div class="results-title"><span class="panel-title-dot"></span>Scan Results</div>
         <div style="display:flex;align-items:center;gap:8px;">
-          <span class="status-chip" id="statusChip">آماده</span>
+          <span class="status-chip" id="statusChip">Ready</span>
           <button class="btn-export" id="exportBtn">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-            دانلود خروجی
+            Export
           </button>
         </div>
       </div>
+
+      <!-- فیلتر خروجی -->
+      <div class="export-filter">
+        <span class="export-filter-label">Filter Export:</span>
+        <div class="filter-chips">
+          <button class="filter-chip active-all" data-filter="all" onclick="setExportFilter(this,'all')">All</button>
+          <button class="filter-chip" data-filter="both" onclick="setExportFilter(this,'both')">Ping + TCP</button>
+          <button class="filter-chip" data-filter="tcp_only" onclick="setExportFilter(this,'tcp_only')">TCP Only</button>
+          <button class="filter-chip" data-filter="ping_only" onclick="setExportFilter(this,'ping_only')">Ping Only</button>
+          <button class="filter-chip" data-filter="Cloudflare" onclick="setExportFilter(this,'Cloudflare')">Cloudflare</button>
+          <button class="filter-chip" data-filter="Vercel" onclick="setExportFilter(this,'Vercel')">Vercel</button>
+          <button class="filter-chip" data-filter="Netlify" onclick="setExportFilter(this,'Netlify')">Netlify</button>
+          <button class="filter-chip" data-filter="Fastly" onclick="setExportFilter(this,'Fastly')">Fastly</button>
+          <button class="filter-chip" data-filter="Google" onclick="setExportFilter(this,'Google')">Google</button>
+          <button class="filter-chip" data-filter="Akamai" onclick="setExportFilter(this,'Akamai')">Akamai</button>
+        </div>
+      </div>
+
       <div class="table-wrap">
         <table>
-          <thead><tr><th>#</th><th>هدف</th><th>IP شناسایی‌شده</th><th>CDN</th><th>پینگ</th><th>TCP</th><th>وضعیت</th><th>زمان</th></tr></thead>
+          <thead><tr><th>#</th><th>Target</th><th>Resolved IP</th><th>CDN</th><th>Ping</th><th>TCP</th><th>Status</th><th>Time</th></tr></thead>
           <tbody id="tableBody">
-            <tr><td colspan="8"><div class="empty-state"><div class="empty-state-icon">📡</div><div class="empty-state-text">آی‌پی، سابنت یا دامنه وارد کنید و اسکن را شروع کنید</div></div></td></tr>
+            <tr><td colspan="8"><div class="empty-state"><div class="empty-state-icon">📡</div><div class="empty-state-text">Enter IPs, subnets or domains and start scan</div></div></td></tr>
           </tbody>
         </table>
       </div>
@@ -697,6 +617,7 @@ tbody td{padding:9px 16px;font-family:'Cascadia Code','Consolas',monospace;font-
 
 <script>
 let results = [], scanning = false, reader = null;
+let exportFilter = 'all';
 const $ = id => document.getElementById(id);
 
 function toast(msg, type='info') {
@@ -716,8 +637,26 @@ $('themeBtn').addEventListener('click', () => {
 });
 
 $('pingTO').addEventListener('input', e => $('pingTOVal').textContent = e.target.value);
-$('tcpTO').addEventListener('input', e => $('tcpTOVal').textContent = e.target.value);
+$('tcpTO').addEventListener('input',  e => $('tcpTOVal').textContent  = e.target.value);
 $('workersSlider').addEventListener('input', e => $('workersVal').textContent = e.target.value);
+$('portInput').addEventListener('input', e => $('portVal').textContent = e.target.value);
+
+
+function setExportFilter(btn, filter) {
+  document.querySelectorAll('.filter-chip').forEach(c => {
+    c.className = 'filter-chip';
+  });
+  const cls = filter==='all'?'active-all':filter==='both'?'active-both':filter==='tcp_only'?'active-tcp':filter==='ping_only'?'active-ping':'active-cdn';
+  btn.classList.add(cls);
+  exportFilter = filter;
+}
+
+function applyFilter(arr) {
+  if (exportFilter === 'all') return arr;
+  if (['both','tcp_only','ping_only','dead'].includes(exportFilter))
+    return arr.filter(r => r.status === exportFilter);
+  return arr.filter(r => r.cdn === exportFilter);
+}
 
 function switchTab(name) {
   document.querySelectorAll('.tab-btn').forEach((btn, i) => {
@@ -730,22 +669,22 @@ function switchTab(name) {
 
 async function loadTemplates() {
   const grid = $('tplGrid');
-  grid.innerHTML = '<div style="color:var(--muted);font-size:.75rem;padding:8px;">در حال بارگذاری...</div>';
+  grid.innerHTML = '<div style="color:var(--muted);font-size:.75rem;padding:8px;">Loading...</div>';
   try {
     const resp = await fetch('/templates');
     const data = await resp.json();
     if (!data.templates || data.templates.length === 0) {
-      grid.innerHTML = `<div class="tpl-card empty-tpl"><div class="tpl-icon">📭</div><div><div class="tpl-name">قالبی یافت نشد</div><div class="tpl-desc">فایل targets.txt رو کنار اسکریپت بذار</div></div></div>`;
+      grid.innerHTML = `<div class="tpl-card empty-tpl"><div class="tpl-icon">📭</div><div><div class="tpl-name">No templates found</div><div class="tpl-desc">Place targets.txt next to the script</div></div></div>`;
       return;
     }
     grid.innerHTML = data.templates.map(tpl => `
       <div class="tpl-card" onclick="loadTemplate('${tpl.file}')">
         <div class="tpl-icon">${tpl.icon}</div>
         <div style="flex:1"><div class="tpl-name">${tpl.name}</div><div class="tpl-desc">${tpl.desc}</div></div>
-        <div class="tpl-count">${tpl.count} هدف</div>
+        <div class="tpl-count">${tpl.count} targets</div>
       </div>`).join('');
   } catch(e) {
-    grid.innerHTML = `<div class="tpl-card empty-tpl"><div class="tpl-icon">⚠️</div><div><div class="tpl-name">خطا در بارگذاری</div></div></div>`;
+    grid.innerHTML = `<div class="tpl-card empty-tpl"><div class="tpl-icon">Warning</div><div><div class="tpl-name">Load error</div></div></div>`;
   }
 }
 
@@ -753,8 +692,8 @@ async function loadTemplate(filename) {
   try {
     const resp = await fetch('/template/' + encodeURIComponent(filename));
     const data = await resp.json();
-    if (data.content) { $('targetsInput').value = data.content; switchTab('manual'); debounceClean(); toast(`قالب "${filename}" بارگذاری شد`, 'ok'); }
-  } catch(e) { toast('خطا در بارگذاری قالب', 'err'); }
+    if (data.content) { $('targetsInput').value = data.content; switchTab('manual'); debounceClean(); toast(`Template "${filename}" loaded`, 'ok'); }
+  } catch(e) { toast('Error loading template', 'err'); }
 }
 
 const dropZone = $('dropZone'), fileInput = $('fileInput');
@@ -764,15 +703,15 @@ dropZone.addEventListener('drop', e => { e.preventDefault(); dropZone.classList.
 fileInput.addEventListener('change', e => { if(e.target.files[0]) handleFile(e.target.files[0]); });
 
 function handleFile(file) {
-  if (!file.name.match(/\.(txt|csv|list)$/i)) { toast('فقط فایل TXT/CSV/List قبوله', 'err'); return; }
+  if (!file.name.match(/\.(txt|csv|list)$/i)) { toast('Only TXT/CSV/List files', 'err'); return; }
   const rf = new FileReader();
   rf.onload = e => {
     const content = e.target.result;
     $('targetsInput').value = content;
     const lines = content.split('\n').filter(l => l.trim() && !l.startsWith('#'));
     $('fileInfo').style.display = 'block';
-    $('fileInfo').innerHTML = `📄 <strong>${file.name}</strong> — ${lines.length} خط بارگذاری شد`;
-    switchTab('manual'); debounceClean(); toast(`فایل "${file.name}" بارگذاری شد`, 'ok');
+    $('fileInfo').innerHTML = `File: <strong>${file.name}</strong> — ${lines.length} lines`;
+    switchTab('manual'); debounceClean(); toast(`"${file.name}" loaded`, 'ok');
   };
   rf.readAsText(file, 'UTF-8');
 }
@@ -808,7 +747,7 @@ function parseTargetsClient(raw) {
   return { ips, domains, subnetTotal: Math.min(subnetTotal, 99999) };
 }
 
-const CDN_PRIORITY = { 'Cloudflare':'cdn_cf','Google':'cdn_g','Netlify':'cdn_nl','Vercel':'cdn_vc','Fastly':'cdn_fy','Akamai':'cdn_ak','ArvanCloud':'cdn_ar' };
+const CDN_PRIORITY = { 'Cloudflare':'cdn_cf','Google':'cdn_g','Netlify':'cdn_nl','Vercel':'cdn_vc','Fastly':'cdn_fy','Akamai':'cdn_ak','CloudFront':'cdn_cf2' };
 
 function sortResults(arr) {
   const mode = $('sortBy').value;
@@ -827,16 +766,16 @@ $('autoSortToggle').addEventListener('change', renderTable);
 function renderTable() {
   const rows = $('autoSortToggle').checked ? sortResults(results) : results;
   const tbody = $('tableBody');
-  if (rows.length===0) { tbody.innerHTML=`<tr><td colspan="8"><div class="empty-state"><div class="empty-state-icon">📡</div><div class="empty-state-text">آی‌پی، سابنت یا دامنه وارد کنید و اسکن را شروع کنید</div></div></td></tr>`; return; }
+  if (rows.length===0) { tbody.innerHTML=`<tr><td colspan="8"><div class="empty-state"><div class="empty-state-icon">📡</div><div class="empty-state-text">Enter IPs, subnets or domains and start scan</div></div></td></tr>`; return; }
   tbody.innerHTML = rows.map((r,i) => {
     const rowClass = r.status==='both'?'row-both':r.status==='tcp_only'?'row-tcp':r.status==='ping_only'?'row-ping':'row-dead';
     const cdnKey = (r.cdn||'unknown').toLowerCase().replace(/\s/g,'');
     const cdnBadge = `<span class="badge cdn-${cdnKey}">${r.cdn||'Unknown'}</span>`;
-    const pingBadge = r.ping_ok ? `<span class="badge badge-ms">✓ ${r.ping_ms}ms</span>` : `<span class="badge badge-fail">✗</span>`;
-    const tcpBadge  = r.tcp_ok  ? `<span class="badge badge-ms">✓ ${r.tcp_ms}ms</span>`  : `<span class="badge badge-fail">✗</span>`;
-    const statusMap = {both:'🟢 هر دو',tcp_only:'🟡 TCP',ping_only:'🔵 Ping',dead:'🔴 ناموفق'};
+    const pingBadge = r.ping_ok ? `<span class="badge badge-ms">${r.ping_ms != null ? r.ping_ms+'ms' : 'OK'}</span>` : `<span class="badge badge-fail">--</span>`;
+    const tcpBadge  = r.tcp_ok  ? `<span class="badge badge-ms">${r.tcp_ms  != null ? r.tcp_ms+'ms'  : 'OK'}</span>` : `<span class="badge badge-fail">--</span>`;
+    const statusMap = {both:'[OK] Both',tcp_only:'[TCP]',ping_only:'[Ping]',dead:'[Dead]'};
     const isIP = /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(r.target);
-    const resolvedCell = (!isIP&&r.resolved_ip) ? `<span style="font-family:monospace;font-size:.68rem;color:var(--teal)">${r.resolved_ip}</span>` : `<span style="color:var(--muted);font-size:.65rem">—</span>`;
+    const resolvedCell = (!isIP&&r.resolved_ip) ? `<span style="font-family:monospace;font-size:.68rem;color:var(--teal)">${r.resolved_ip}</span>` : `<span style="color:var(--muted);font-size:.65rem">-</span>`;
     return `<tr class="${rowClass}"><td style="color:var(--muted)">${i+1}</td><td style="color:var(--white);font-weight:600;font-family:monospace">${r.target}</td><td>${resolvedCell}</td><td>${cdnBadge}</td><td>${pingBadge}</td><td>${tcpBadge}</td><td>${statusMap[r.status]||r.status}</td><td style="color:var(--muted)">${r.time}</td></tr>`;
   }).join('');
 }
@@ -854,25 +793,24 @@ $('stopBtn').addEventListener('click', stopScan);
 
 async function startScan() {
   const raw = $('targetsInput').value.trim();
-  if (!raw) { toast('لطفاً آی‌پی، سابنت یا دامنه وارد کنید', 'err'); return; }
+  if (!raw) { toast('Enter at least one target', 'err'); return; }
   results = []; scanning = true;
   $('scanBtn').classList.add('hidden');
   $('stopBtn').classList.remove('hidden');
-  $('statusChip').textContent = 'در حال اسکن...';
+  $('statusChip').textContent = 'Scanning...';
   $('statusChip').className = 'status-chip scanning';
   renderTable();
 
-  // ✅ POST به جای GET — بدون محدودیت طول URL
   try {
     const response = await fetch('/scan', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        targets: raw,
-        port:    $('portInput').value,
-        ping_to: $('pingTO').value,
-        tcp_to:  $('tcpTO').value,
-        workers: $('workersSlider').value,
+        targets:  raw,
+        port:     $('portInput').value,
+        ping_to:  $('pingTO').value,
+        tcp_to:   $('tcpTO').value,
+        workers:  $('workersSlider').value,
       })
     });
     reader = response.body.getReader();
@@ -896,7 +834,7 @@ async function startScan() {
     }
     if (scanning) finishScan('done');
   } catch(e) {
-    if (scanning) { toast('خطا در اتصال به سرور','err'); finishScan('error'); }
+    if (scanning) { toast('Connection error','err'); finishScan('error'); }
   }
 }
 
@@ -911,24 +849,32 @@ function finishScan(state) {
   scanning = false;
   $('scanBtn').classList.remove('hidden');
   $('stopBtn').classList.add('hidden');
-  const map = { done:['اتمام','done'], stopped:['متوقف شد','stopped'], error:['خطا','error'] };
-  const [txt,cls] = map[state]||['آماده',''];
+  const map = { done:['Done','done'], stopped:['Stopped','stopped'], error:['Error','error'] };
+  const [txt,cls] = map[state]||['Ready',''];
   $('statusChip').textContent = txt;
   $('statusChip').className = 'status-chip '+cls;
   updateMetrics(results.length);
   renderTable();
-  if (state==='done') toast(`اسکن تمام شد — ${results.length} هدف بررسی شد`,'ok');
+  if (state==='done') toast(`Scan complete - ${results.length} targets checked`,'ok');
 }
 
 $('exportBtn').addEventListener('click', async () => {
-  if (results.length===0) { toast('نتیجه‌ای برای خروجی وجود ندارد','err'); return; }
-  const resp = await fetch('/export', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({results}) });
+  if (results.length===0) { toast('No results to export','err'); return; }
+  const filtered = applyFilter(results);
+  if (filtered.length===0) { toast('No results match current filter','err'); return; }
+  const resp = await fetch('/export', {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({ results: filtered, filter: exportFilter })
+  });
   const blob = await resp.blob();
   const url = URL.createObjectURL(blob);
-  const a = document.createElement('a'); a.href=url;
-  a.download='@powercodes_'+new Date().toISOString().slice(0,19).replace(/:/g,'-')+'.txt';
-  a.click(); URL.revokeObjectURL(url);
-  toast('فایل خروجی دانلود شد ✓','ok');
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = '@powercodes_' + new Date().toISOString().slice(0,19).replace(/:/g,'-') + '.txt';
+  a.click();
+  URL.revokeObjectURL(url);
+  toast(`Exported ${filtered.length} results`,'ok');
 });
 
 updateCount();
@@ -940,7 +886,7 @@ updateCount();
 # ══════════════════════════════════════════════════════════════════
 #  Flask App
 # ══════════════════════════════════════════════════════════════════
-app = Flask(__name__, static_folder="static")
+app = Flask(__name__)
 
 
 @app.route("/")
@@ -948,21 +894,20 @@ def index():
     return render_template_string(HTML_TEMPLATE, tg=TELEGRAM_CHANNEL, yt=YOUTUBE_CHANNEL, gh=GITHUB_REPO)
 
 
-# ✅ تغییر اصلی: POST به جای GET — بدون محدودیت طول URL
 @app.route("/scan", methods=["POST"])
 def scan():
     data         = request.get_json(force=True)
     raw_targets  = data.get("targets", "")
     port         = int(data.get("port", 443))
-    ping_timeout = float(data.get("ping_to", 1.0))
-    tcp_timeout  = float(data.get("tcp_to", 1.0))
-    workers      = int(data.get("workers", 30))
+    ping_timeout = int(float(data.get("ping_to", 1500)))
+    tcp_timeout  = float(data.get("tcp_to", 2.0))
+    workers      = int(data.get("workers", 50))
 
     targets = clean_targets(raw_targets)
 
     if not targets:
         def empty_gen():
-            yield 'data: {"type":"error","msg":"هیچ آی‌پی یا دامنه معتبری یافت نشد"}\n\n'
+            yield 'data: {"type":"error","msg":"No valid targets found"}\n\n'
         return Response(stream_with_context(empty_gen()), mimetype="text/event-stream")
 
     with scan_state["lock"]:
@@ -1011,13 +956,12 @@ def stop():
 
 @app.route("/templates")
 def templates():
-    # اگه فایل‌های template داری اینجا برگردون
     tpl_files = list(Path(".").glob("targets*.txt"))
     result = []
     for f in tpl_files:
         try:
-            lines = [l.strip() for l in f.read_text(encoding="utf-8").splitlines() if l.strip() and not l.startswith('#')]
-            result.append({"file": f.name, "name": f.stem, "desc": f"فایل {f.name}", "icon": "📄", "count": len(lines)})
+            lines = [l.strip() for l in f.read_text(encoding="utf-8").splitlines() if l.strip() and not l.startswith("#")]
+            result.append({"file": f.name, "name": f.stem, "desc": f"File {f.name}", "icon": "File", "count": len(lines)})
         except Exception:
             pass
     return jsonify({"templates": result})
@@ -1034,48 +978,73 @@ def template_file(filename):
 
 @app.route("/export", methods=["POST"])
 def export():
-    data     = request.get_json()
-    results  = data.get("results", [])
-    both     = [r for r in results if r["status"] == "both"]
-    tcp_only = [r for r in results if r["status"] == "tcp_only"]
-    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    data    = request.get_json()
+    results = data.get("results", [])
+    filter_ = data.get("filter", "all")
+    now     = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+
+    both      = [r for r in results if r["status"] == "both"]
+    tcp_only  = [r for r in results if r["status"] == "tcp_only"]
+    ping_only = [r for r in results if r["status"] == "ping_only"]
+
+
     lines = [
-        "# ══════════════════════════════════════════════════",
-        f"#  {TOOL_NAME} v{TOOL_VERSION} — خروجی اسکن",
-        f"#  تاریخ: {now}",
         "#",
-        f"#  کانال تلگرام : {TELEGRAM_CHANNEL}",
-        f"#  کانال یوتیوب : {YOUTUBE_CHANNEL}",
-        f"#  گیت‌هاب       : {GITHUB_REPO}",
-        "# ══════════════════════════════════════════════════",
-        "", f"# ── ping + TCP  ─────────────────────", "", "",
+        f"# {TOOL_NAME} v{TOOL_VERSION}",
+        f"# Scan output - {now}",
+        f"# Filter: {filter_}",
+        "#",
+        f"# Telegram : {TELEGRAM_CHANNEL}",
+        f"# YouTube  : {YOUTUBE_CHANNEL}",
+        f"# GitHub   : {GITHUB_REPO}",
+        "#",
+        f"# Total: {len(results)} | Ping+TCP: {len(both)} | TCP: {len(tcp_only)} | Ping: {len(ping_only)}",
+        "#",
+        "",
     ]
-    for r in sorted(both, key=lambda x: x.get("ping_ms", 9999)):
-        lines.append(r["target"])
-    lines += ["", f"# ── فقط TCP ({len(tcp_only)} عدد) ────────────────────", ""]
-    for r in sorted(tcp_only, key=lambda x: x.get("tcp_ms", 9999)):
-        lines.append(r["target"])
-    lines += ["", f"# مجموع پینگ+TCP: {len(both)} | فقط TCP: {len(tcp_only)}"]
+
+    if both:
+        lines.append("# -- Ping + TCP -------------------------")
+        for r in sorted(both, key=lambda x: x.get("ping_ms") or 9999):
+            ms = f"{r['ping_ms']}ms" if r.get("ping_ms") is not None else ""
+            cdn = r.get("cdn","")
+            lines.append(r['target'])
+        lines.append("")
+
+    if tcp_only:
+        lines.append("# -- TCP Only ---------------------------")
+        for r in sorted(tcp_only, key=lambda x: x.get("tcp_ms") or 9999):
+            cdn = r.get("cdn","")
+            lines.append(r['target'])
+        lines.append("")
+
+    if ping_only:
+        lines.append("# -- Ping Only --------------------------")
+        for r in sorted(ping_only, key=lambda x: x.get("ping_ms") or 9999):
+            lines.append(r['target'])
+        lines.append("")
+
     return Response(
         "\n".join(lines),
         mimetype="text/plain; charset=utf-8",
-        headers={"Content-Disposition": "attachment; filename=@powercodes_re.txt"}
+        headers={"Content-Disposition": "attachment; filename=@powercodes_scan.txt"}
     )
 
 
 # ══════════════════════════════════════════════════════════════════
-#  اجرا
+#  Main
 # ══════════════════════════════════════════════════════════════════
 if __name__ == "__main__":
     port_http = 5000
     url = f"http://127.0.0.1:{port_http}"
     print(f"""
-╔══════════════════════════════════════════════╗
-    {TOOL_NAME} v{TOOL_VERSION}
-    {url}                       
-╚══════════════════════════════════════════════╝
-  📡 Telegram : {TELEGRAM_HANDLE}
-  🐙 GitHub   : {GITHUB_REPO}
++----------------------------------------------+
+  {TOOL_NAME} v{TOOL_VERSION}
+  {url}
++----------------------------------------------+
+  Telegram : {TELEGRAM_HANDLE}
+  GitHub   : {GITHUB_REPO}
 """)
     threading.Timer(1.2, lambda: webbrowser.open(url)).start()
     app.run(host="0.0.0.0", port=port_http, debug=False, threaded=True)
