@@ -139,7 +139,7 @@ my-example.com
 * **توسعه‌دهنده اصلی:** Powercodes
 * **کانال تلگرام:** [Powercodes Telegram](https://t.me/powercodes)
 * **یوتیوب:** [Powercodes YouTube](https://youtube.com/@powercodes)
-* **گیت‌هاب:** [Powercodes GitHub](https://github.com/power_codes)
+* **گیت‌هاب:** [Powercodes GitHub](https://github.com/power-codes)
 
 ---
 
