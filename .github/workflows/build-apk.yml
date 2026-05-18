@@ -8,50 +8,12 @@ on:
 jobs:
   build-apk:
     runs-on: ubuntu-22.04
+    container:
+      image: kivy/buildozer:latest
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-
-      - name: Install system dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            python3-pip \
-            build-essential \
-            git \
-            ffmpeg \
-            libsdl2-dev \
-            libsdl2-image-dev \
-            libsdl2-mixer-dev \
-            libsdl2-ttf-dev \
-            libportmidi-dev \
-            libswscale-dev \
-            libavformat-dev \
-            libavcodec-dev \
-            zlib1g-dev \
-            libgstreamer1.0-0 \
-            gstreamer1.0-plugins-base \
-            gstreamer1.0-plugins-good \
-            libltdl-dev \
-            libffi-dev \
-            libssl-dev \
-            autoconf \
-            automake \
-            libtool \
-            unzip \
-            zip \
-            openjdk-17-jdk
-
-      - name: Install Python dependencies
-        run: |
-          pip install --upgrade pip
-          pip install buildozer cython==0.29.33
 
       - name: Create buildozer.spec
         run: |
@@ -69,8 +31,6 @@ jobs:
           android.permissions = INTERNET
           android.api = 33
           android.minapi = 21
-          android.sdk = 33
-          android.ndk = 25b
           android.archs = arm64-v8a
           log_level = 2
           warn_on_root = 1
@@ -80,12 +40,10 @@ jobs:
           warn_on_root = 1
           EOF
 
-      - name: Cache buildozer
-        uses: actions/cache@v3
+      - name: Cache buildozer global directory
+        uses: actions/cache@v4
         with:
-          path: |
-            ~/.buildozer
-            ~/.gradle
+          path: /root/.buildozer
           key: buildozer-${{ runner.os }}-${{ hashFiles('buildozer.spec') }}
 
       - name: Build APK
