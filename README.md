@@ -13,7 +13,7 @@
 
 **🚀 اسکنر برای تفکیک آی‌پی‌های سالم و وایت لیست شده ** 
 
-[🌐 کانال تلگرام](https://t.me/powercodes) • [📺 آموزش یوتیوب](https://youtube.com/@powercodes) • [💻 گیت‌هاب توسعه‌دهنده](https://github.com/power_codes)
+[🌐 کانال تلگرام](https://t.me/powercodes) • [📺 آموزش یوتیوب](https://youtu.be/F-25eDYXBX8?is=uj4CQCz1T3QIBF5C) • [💻 گیت‌هاب توسعه‌دهنده](https://github.com/power_codes)
 
 </div>
 
