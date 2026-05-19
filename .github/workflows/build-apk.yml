@@ -8,12 +8,37 @@ on:
 jobs:
   build-apk:
     runs-on: ubuntu-22.04
-    container:
-      image: kivy/buildozer:latest
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Setup Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            git \
+            unzip \
+            zip \
+            openjdk-17-jdk \
+            libffi-dev \
+            libssl-dev \
+            autoconf \
+            automake \
+            libtool \
+            pkg-config \
+            zlib1g-dev
+
+      - name: Install buildozer and cython
+        run: |
+          pip install --upgrade pip
+          pip install buildozer==1.5.0 cython==0.29.33
 
       - name: Create buildozer.spec
         run: |
@@ -40,17 +65,17 @@ jobs:
           warn_on_root = 1
           EOF
 
-      - name: Cache buildozer global directory
+      - name: Cache buildozer
         uses: actions/cache@v4
         with:
-          path: /root/.buildozer
+          path: |
+            ~/.buildozer
+            ~/.gradle
           key: buildozer-${{ runner.os }}-${{ hashFiles('buildozer.spec') }}
 
       - name: Build APK
         run: |
-          echo "y" | buildozer android debug
-        env:
-          BUILDOZER_WARN_ON_ROOT: 0
+          yes | buildozer android debug 2>&1
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
