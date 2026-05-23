@@ -3,7 +3,8 @@ name: Build Android APK
 on:
   push:
     branches: [ main, master ]
-  workflow_dispatch: 
+  workflow_dispatch:
+
 jobs:
   build:
     runs-on: ubuntu-22.04
@@ -17,7 +18,7 @@ jobs:
         with:
           python-version: '3.10'
 
-      - name: Install dependencies
+      - name: Install system dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y \
@@ -25,6 +26,9 @@ jobs:
             autoconf libtool pkg-config \
             zlib1g-dev libncurses5-dev libncursesw5-dev \
             cmake libffi-dev libssl-dev
+
+      - name: Install Python dependencies
+        run: |
           pip install --upgrade pip
           pip install "Cython<3.0"
           pip install buildozer
@@ -32,14 +36,20 @@ jobs:
       - name: Cache Buildozer
         uses: actions/cache@v4
         with:
-          path: |
-            ~/.buildozer/android/platform/android-sdk
-            ~/.buildozer/android/platform/android-ndk-r25b
-          key: buildozer-${{ runner.os }}-v1
+          path: ~/.buildozer
+          key: buildozer-${{ runner.os }}-v2
+
+      - name: Accept Android licenses
+        run: |
+          mkdir -p ~/.buildozer/android/platform/android-sdk/licenses
+          echo -e "\n24333f8a63b6825ea9c5514f83c2829b004d1fee" > ~/.buildozer/android/platform/android-sdk/licenses/android-sdk-license
+          echo -e "\nd975f751698a77b662f1254ddbeed3901e976f5a" >> ~/.buildozer/android/platform/android-sdk/licenses/android-sdk-license
+          echo -e "\n601085b94cd77f0b54ff86406957099ebe79c4d" >> ~/.buildozer/android/platform/android-sdk/licenses/android-sdk-license
+          echo -e "\n84831b9409646a918e30573bab4c9c91346d8abd" > ~/.buildozer/android/platform/android-sdk/licenses/android-sdk-preview-license
 
       - name: Build APK
         run: |
-          buildozer android debug
+          yes | buildozer android debug 2>&1
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
@@ -48,50 +58,3 @@ jobs:
           path: bin/*.apk
           retention-days: 30
           
-      - name: Install buildozer and cython
-        run: |
-          pip install --upgrade pip
-          pip install buildozer==1.5.0 cython==0.29.33
-
-      - name: Create buildozer.spec
-        run: |
-          cat > buildozer.spec << 'EOF'
-          [app]
-          title = Scanner IP CDN
-          package.name = scanneripcdn
-          package.domain = org.powercodes
-          source.dir = .
-          source.include_exts = py,txt
-          version = 1.0
-          requirements = python3,flask,requests
-          orientation = portrait
-          fullscreen = 0
-          android.permissions = INTERNET
-          android.api = 33
-          android.minapi = 21
-          android.archs = arm64-v8a
-          log_level = 2
-          warn_on_root = 1
-
-          [buildozer]
-          log_level = 2
-          warn_on_root = 1
-          EOF
-
-      - name: Cache buildozer
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.buildozer
-            ~/.gradle
-          key: buildozer-${{ runner.os }}-${{ hashFiles('buildozer.spec') }}
-
-      - name: Build APK
-        run: |
-          yes | buildozer android debug 2>&1
-
-      - name: Upload APK artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: Scanner-IP-CDN-Android
-          path: bin/*.apk
