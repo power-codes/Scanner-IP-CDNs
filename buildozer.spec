@@ -1,4 +1,4 @@
-چچ[app]
+[app]
 title = PowerCodes Scanner
 package.name = powercodesscanner
 package.domain = org.powercodes
