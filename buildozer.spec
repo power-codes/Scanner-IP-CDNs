@@ -6,10 +6,7 @@ source.dir = .
 source.include_exts = py
 version = 3.0
 
-requirements = python3,kivy==2.3.0,hostpython3
-
-# آیکون (اختیاری — فایل icon.png بذار کنار main.py)
-# icon.filename = icon.png
+requirements = python3==3.10.12,kivy==2.3.0,Cython==0.29.33
 
 android.permissions = INTERNET
 android.api = 33
@@ -17,8 +14,6 @@ android.minapi = 21
 android.ndk = 25b
 android.archs = arm64-v8a, armeabi-v7a
 android.allow_backup = True
-
-# orientation
 orientation = portrait
 
 [buildozer]
