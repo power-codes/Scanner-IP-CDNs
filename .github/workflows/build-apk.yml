@@ -29,10 +29,46 @@ jobs:
           python3 -m pip install --upgrade pip setuptools
           python3 -m pip install "cython==0.29.33"
 
+      - name: Setup Android SDK + accept licenses
+        run: |
+          SDK=$HOME/.buildozer/android/platform/android-sdk
+          mkdir -p $SDK/cmdline-tools
+
+          # دانلود cmdline-tools
+          wget -q https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip -O /tmp/cmdtools.zip
+          unzip -q /tmp/cmdtools.zip -d /tmp/cmdtools
+          mv /tmp/cmdtools/cmdline-tools $SDK/cmdline-tools/latest
+
+          SDKMGR=$SDK/cmdline-tools/latest/bin/sdkmanager
+
+          # لایسنس‌ها را دستی بنویس (بدون نیاز به yes)
+          mkdir -p $SDK/licenses
+          printf '\n24333f8a63b6825ea9c5514f83c2829b004d1fee\nd975f751698a77b662f1254ddbeed3901e976f5a\n601085b94cd77f0b54ff86406957099ebe79c4d' \
+            > $SDK/licenses/android-sdk-license
+          printf '\n84831b9409646a918e30573bab4c9c91346d8abd' \
+            > $SDK/licenses/android-sdk-preview-license
+          printf '\n33b6937b7bec57bb841f671542dc9b63893e8336' \
+            > $SDK/licenses/google-gdk-license
+
+          # نصب پکیج‌های مورد نیاز
+          $SDKMGR --sdk_root=$SDK --licenses < /dev/null || true
+          $SDKMGR --sdk_root=$SDK \
+            "platform-tools" \
+            "platforms;android-33" \
+            "build-tools;33.0.2"
+
+          # symlink مسیر قدیمی
+          mkdir -p $SDK/tools/bin
+          ln -sf $SDK/cmdline-tools/latest/bin/sdkmanager $SDK/tools/bin/sdkmanager
+          ln -sf $SDK/cmdline-tools/latest/bin/avdmanager $SDK/tools/bin/avdmanager
+
+          echo "ANDROID_SDK_ROOT=$SDK" >> $GITHUB_ENV
+          echo "ANDROIDSDK=$SDK" >> $GITHUB_ENV
+
       - name: Cache Buildozer
         uses: actions/cache@v4
         with:
-          path: .buildozer
+          path: ~/.buildozer
           key: buildozer-${{ runner.os }}-${{ hashFiles('buildozer.spec') }}
           restore-keys: |
             buildozer-${{ runner.os }}-
