@@ -7,11 +7,27 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Install system dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y \
+            git zip unzip openjdk-17-jdk python3-pip python3-virtualenv \
+            autoconf libtool pkg-config zlib1g-dev libncurses5-dev \
+            libncursesw5-dev libtinfo6 cmake libffi-dev libssl-dev \
+            automake autopoint gettext
+          sudo update-alternatives --set java /usr/lib/jvm/java-17-openjdk-amd64/bin/java
+          sudo update-alternatives --set javac /usr/lib/jvm/java-17-openjdk-amd64/bin/javac
+
+      - name: Install Cython
+        run: |
+          python3 -m pip install --upgrade pip setuptools
+          python3 -m pip install "cython==0.29.33"
 
       - name: Cache Buildozer
         uses: actions/cache@v4
@@ -21,16 +37,16 @@ jobs:
           restore-keys: |
             buildozer-${{ runner.os }}-
 
-      - name: Build with Buildozer Action
-        uses: ArtemSBulgakov/buildozer-action@v1
-        id: buildozer
+      - name: Build APK
+        uses: digreatbrian/buildozer-action@v2
         with:
-          buildozer_version: stable
+          python-version: '3.10'
+          buildozer-cmd: buildozer -v android debug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: PowerCodes-Scanner
-          path: ${{ steps.buildozer.outputs.filename }}
+          path: ./bin/*.apk
           retention-days: 30
           
