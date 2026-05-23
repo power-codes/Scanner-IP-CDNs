@@ -2,39 +2,52 @@ name: Build Android APK
 
 on:
   push:
-    branches: [ main ]
-  workflow_dispatch:
-
+    branches: [ main, master ]
+  workflow_dispatch: 
 jobs:
-  build-apk:
+  build:
     runs-on: ubuntu-22.04
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Python 3.11
+      - name: Set up Python 3.10
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: '3.10'
 
-      - name: Install system dependencies
+      - name: Install dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y \
-            build-essential \
-            git \
-            unzip \
-            zip \
-            openjdk-17-jdk \
-            libffi-dev \
-            libssl-dev \
-            autoconf \
-            automake \
-            libtool \
-            pkg-config \
-            zlib1g-dev
+            git zip unzip openjdk-17-jdk \
+            autoconf libtool pkg-config \
+            zlib1g-dev libncurses5-dev libncursesw5-dev \
+            cmake libffi-dev libssl-dev
+          pip install --upgrade pip
+          pip install "Cython<3.0"
+          pip install buildozer
 
+      - name: Cache Buildozer
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.buildozer/android/platform/android-sdk
+            ~/.buildozer/android/platform/android-ndk-r25b
+          key: buildozer-${{ runner.os }}-v1
+
+      - name: Build APK
+        run: |
+          buildozer android debug
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: PowerCodes-Scanner
+          path: bin/*.apk
+          retention-days: 30
+          
       - name: Install buildozer and cython
         run: |
           pip install --upgrade pip
