@@ -33,23 +33,39 @@ jobs:
           pip install "Cython<3.0"
           pip install buildozer
 
+      - name: Setup Android SDK manually
+        run: |
+          # دانلود command-line tools
+          mkdir -p ~/.buildozer/android/platform/android-sdk/cmdline-tools
+          cd /tmp
+          wget -q https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip
+          unzip -q commandlinetools-linux-9477386_latest.zip
+          mv cmdline-tools ~/.buildozer/android/platform/android-sdk/cmdline-tools/latest
+
+          # قبول لایسنس‌ها
+          export ANDROID_SDK_ROOT=~/.buildozer/android/platform/android-sdk
+          export PATH=$PATH:$ANDROID_SDK_ROOT/cmdline-tools/latest/bin
+
+          yes | sdkmanager --licenses
+          yes | sdkmanager "platform-tools" "platforms;android-33" "build-tools;33.0.2"
+
+      - name: Accept all licenses (extra)
+        run: |
+          mkdir -p ~/.buildozer/android/platform/android-sdk/licenses
+          printf '\n24333f8a63b6825ea9c5514f83c2829b004d1fee\nd975f751698a77b662f1254ddbeed3901e976f5a\n601085b94cd77f0b54ff86406957099ebe79c4d' \
+            > ~/.buildozer/android/platform/android-sdk/licenses/android-sdk-license
+          printf '\n84831b9409646a918e30573bab4c9c91346d8abd' \
+            > ~/.buildozer/android/platform/android-sdk/licenses/android-sdk-preview-license
+
       - name: Cache Buildozer
         uses: actions/cache@v4
         with:
           path: ~/.buildozer
-          key: buildozer-${{ runner.os }}-v2
-
-      - name: Accept Android licenses
-        run: |
-          mkdir -p ~/.buildozer/android/platform/android-sdk/licenses
-          echo -e "\n24333f8a63b6825ea9c5514f83c2829b004d1fee" > ~/.buildozer/android/platform/android-sdk/licenses/android-sdk-license
-          echo -e "\nd975f751698a77b662f1254ddbeed3901e976f5a" >> ~/.buildozer/android/platform/android-sdk/licenses/android-sdk-license
-          echo -e "\n601085b94cd77f0b54ff86406957099ebe79c4d" >> ~/.buildozer/android/platform/android-sdk/licenses/android-sdk-license
-          echo -e "\n84831b9409646a918e30573bab4c9c91346d8abd" > ~/.buildozer/android/platform/android-sdk/licenses/android-sdk-preview-license
+          key: buildozer-${{ runner.os }}-v3
 
       - name: Build APK
         run: |
-          yes | buildozer android debug 2>&1
+          buildozer android debug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
