@@ -52,6 +52,15 @@
 | ☁️ | **ArvanCloud ** | 🇮🇷 ایران | 
 
 ---
+## 📥 دانلود برنامه
+
+| پلتفرم | وضعیت | لینک دانلود |
+|---------|--------|--------------|
+| 🪟 ویندوز 64 بیتی | ✅ آماده دانلود | [دانلود نسخه ویندوز](https://github.com/power-codes/Scanner-IP-CDNs/releases/latest) |
+| 🤖 اندروید | 🚧 به‌زودی | به‌زودی منتشر می‌شود |
+
+> ⚠️ نسخه ویندوز روی سیستم‌های 64 بیتی اجرا می‌شود.  
+> ⚠️ برای اجرای فایل ممکن است نیاز باشد Windows Defender را تأیید کنید.
 
 ## 🛠 نحوه نصب و راه‌اندازی (Installation)
 
@@ -65,8 +74,11 @@ git clone https://github.com/power-codes/Scanner-IP-CDNs.git
 # ورود به پوشه پروژه
 cd Scanner-IP-CDNs
 
-# نصب پکیج‌های پیش‌نیاز
-pip install -r requirements.txt
+# نصب پکیج‌ پیش‌نیاز
+pip install flask
+
+# اگه موقع نصب vpn نداشتید از میرور زیر استفاده کنید
+pip install flask -i https://mirror-pypi.runflare.com/simple/ --trusted-host mirror-pypi.runflare.com
 
 # اجرای اسکریپت اصلی
 python scanner.py
@@ -83,7 +95,11 @@ pkg update && pkg upgrade -y
 pkg install python git -y
 git clone https://github.com/power-codes/Scanner-IP-CDNs.git
 cd Scanner-IP-CDNs
-pip install -r requirements.txt
+pip install flask
+
+# اگه موقع نصب vpn نداشتید از میرور زیر استفاده کنید
+pip install flask -i https://mirror-pypi.runflare.com/simple/ --trusted-host mirror-pypi.runflare.com
+
 python scanner.py
 
 ```
